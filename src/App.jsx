@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { App as NativeApp } from '@capacitor/app';
+import { api } from './api.js';
 import { AIRPORTS } from '../lib/airports.js';
 import { WeatherIcon, LandingScene, sceneFacts, skyText } from './Weather.jsx';
 
@@ -380,7 +382,7 @@ function Stats({ code, name }) {
   useEffect(() => {
     let live = true;
     setSt(null); setErr(null);
-    fetch(`/api/stats?airport=${code}`).then((r) => r.json()).then((j) => live && (j.error ? setErr(j.error) : setSt(j))).catch((e) => live && setErr(String(e)));
+    fetch(api(`/api/stats?airport=${code}`)).then((r) => r.json()).then((j) => live && (j.error ? setErr(j.error) : setSt(j))).catch((e) => live && setErr(String(e)));
     return () => { live = false; };
   }, [code]);
   if (err) return <p className="panel c-high">Kunne ikke hente statistikk: {err}</p>;
@@ -438,7 +440,7 @@ export default function App() {
   async function fetchDay(code) {
     setLoading(true); setErr(null);
     try {
-      const r = await fetch(`/api/day?airport=${code}`);
+      const r = await fetch(api(`/api/day?airport=${code}`));
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || r.status);
       setData(j);
@@ -446,6 +448,23 @@ export default function App() {
     finally { setLoading(false); }
   }
   useEffect(() => { save(ap); setOpenId(null); fetchDay(ap); }, [ap]);
+
+  // Android tilbakeknapp: lukk flyplassvelger/detaljvisning før appen avsluttes.
+  useEffect(() => {
+    const h = NativeApp.addListener('backButton', () => {
+      if (picking) setPicking(false);
+      else if (openId) setOpenId(null);
+      else if (day !== 'today') setDay('today');
+      else NativeApp.exitApp();
+    });
+    return () => { h.then((l) => l.remove()); };
+  }, [picking, openId, day]);
+
+  // Hent ferske data når appen kommer tilbake i forgrunnen.
+  useEffect(() => {
+    const h = NativeApp.addListener('resume', () => fetchDay(ap));
+    return () => { h.then((l) => l.remove()); };
+  }, [ap]);
   const refresh = () => { setOpenId(null); fetchDay(ap); };
 
   const lists = useMemo(() => {

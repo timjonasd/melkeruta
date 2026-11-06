@@ -1,0 +1,12 @@
+{
+  "appId": "no.melkeruten.app",
+  "appName": "Melkeruten",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#0B1621"
+  },
+  "plugins": {
+    "CapacitorHttp": { "enabled": true },
+    "SystemBars": { "insetsHandling": "css", "style": "DARK" }
+  }
+}

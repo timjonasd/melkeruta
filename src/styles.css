@@ -28,6 +28,8 @@ button { font: inherit; color: inherit; }
 
 /* ramme */
 .page { max-width: 1240px; margin: 0 auto; padding: 0 16px 32px; }
+/* Android-app (kant-til-kant): hold innholdet unna status- og navigasjonslinjen */
+.page { padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); padding-bottom: calc(32px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 4px 12px; }
 .brand { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .picker { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; }
