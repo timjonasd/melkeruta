@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AIRPORTS } from '../lib/airports.js';
 import { WeatherIcon, LandingScene, sceneFacts, skyText } from './Weather.jsx';
+import { LogoMark } from './Logo.jsx';
 
 // ---------- hjelpere ----------
 const KEY = 'melkeruta.airport';
@@ -319,7 +320,7 @@ export default function App() {
     <div className="page">
       <header className="topbar">
         <div className="brand">
-          <button className="eyebrow accent brand-btn" onClick={refresh} title="Oppdater">Melkeruta</button>
+          <button className="brand-btn" onClick={refresh} title="Oppdater"><LogoMark size={30} /><span className="wordmark">Melkeruta</span></button>
           <label className="picker">
             <span className="sr-only">Velg flyplass</span>
             <select value={ap} onChange={(e) => setAp(e.target.value)}>
