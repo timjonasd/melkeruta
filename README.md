@@ -20,7 +20,7 @@ Viser Widerøe-ankomster i dag og i morgen for valgt flyplass i Finnmark, med es
 5. Sjekk innsamling: `/api/history`. Kjør cron manuelt: `curl -H "Authorization: Bearer $CRON_SECRET" https://<app>/api/cron`.
 
 ## Juster
-`lib/airports.js`: banebetegnelser, misvisning, grenser for sidevind/kast/medvind og minima per flyplass. **Verdiene er omtrentlige – verifiser mot AIP Norge.**
+`lib/airports.js`: banebetegnelser, sann baneretning, grenser for sidevind/kast/medvind og minima per flyplass. **Verdiene er omtrentlige – verifiser mot AIP Norge.**
 
 ## Test
 `npm test` (modell/TAF-parser) · `node test/e2e.mjs` (API med mock-data) · lokalt: `vercel dev`.
