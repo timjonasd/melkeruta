@@ -42,3 +42,17 @@ for (const a of AIRPORTS) console.log(a.iata, a.rwy.map((e) => { const m = endMi
 import { condRisk } from '../lib/model.js';
 assert.equal(condRisk(byIata.VDS, { dir: 260, spd: 8, gust: 10, ceil: 2000, vis: 9999 }).wx.rwy, '25');
 console.log('OK minima');
+
+// Værfenomen, skydekke og ikon
+import { parseGroups, iconFrom } from '../lib/weather.js';
+const g = parseGroups('25012KT 9999 -SHSN SCT015 BKN025 M02/M05'.split(' '));
+assert.equal(g.phen, 'shsn'); assert.equal(g.cover, 3); assert.equal(g.base, 1500); assert.equal(g.temp, -2);
+assert.equal(parseGroups(['VCTS', 'TSRA']).phen, 'ts');
+assert.equal(parseGroups(['RASN']).phen, 'sl');
+assert.equal(parseGroups(['NSW']).phen, null);
+assert.equal(parseGroups(['CAVOK']).cover, 0);
+assert.deepEqual(iconFrom(g, 'snowshowers_night'), { kind: 'snowshowers', night: true });
+assert.deepEqual(iconFrom({ cover: 0, phen: null }, 'clearsky_day'), { kind: 'clear', night: false });
+assert.deepEqual(iconFrom({}, 'partlycloudy_polartwilight'), { kind: 'partly', night: true });
+assert.equal(iconFrom({ cover: 4 }, '').kind, 'cloudy');
+console.log('OK ikon');

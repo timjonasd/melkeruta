@@ -1,6 +1,6 @@
 import { byIata, airportName } from '../lib/airports.js';
 import { fetchArrivals } from '../lib/avinor.js';
-import { fetchWeather, wxPhrase } from '../lib/weather.js';
+import { fetchWeather, wxPhrase, iconFrom, lfAt } from '../lib/weather.js';
 import { ruleRisk, calibrate, condRisk } from '../lib/model.js';
 import { getHistory, saveSnapshot, redis } from '../lib/store.js';
 import { osloDate, osloHM, hoursSinceOsloMidnight, addDays } from '../lib/time.js';
@@ -50,6 +50,8 @@ export default async function handler(req, res) {
         src: rule?.src || null,
         wx: rule?.wx || null,
         worstWx: rule?.worstWx || null,
+        sky: rule ? iconFrom(rule.wx, rule.sym) : null,
+        worstSky: rule?.worstWx ? iconFrom(rule.worstWx, rule.sym) : null,
         drivers: rule?.drivers || [],
       });
     }
@@ -60,11 +62,18 @@ export default async function handler(req, res) {
     const current = last
       ? { time: osloHM(last.time), ...condRisk(ap, last.cond).wx, phrase: wxPhrase(last.raw) }
       : null;
+    // Været akkurat nå (ikon ved flyplassnavnet): METAR hvis den finnes, ellers prognosen
+    const lfNow = lfAt(wx.lf, now);
+    const nowWx = {
+      sky: last ? iconFrom(last.cond, lfNow?.sym) : lfNow ? iconFrom(lfNow, lfNow.sym) : null,
+      temp: last?.cond.temp ?? (lfNow ? Math.round(lfNow.temp) : null),
+    };
 
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
     res.json({
       airport: { iata, name: ap.name, icao: ap.icao, rwy: ap.rwy, hdg: ap.hdg, limits: { xw: ap.xw, gust: ap.gust, tail: ap.tail, ceil: ap.ceil, vis: ap.vis } },
       current,
+      now: nowWx,
       updated: now,
       metar: wx.metars.at(-1)?.raw || null,
       taf: wx.taf?.raw || null,

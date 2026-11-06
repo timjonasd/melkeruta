@@ -137,3 +137,70 @@ tr.done .time-sm { color: var(--muted); }
 @media (max-width: 380px) {
   .now-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 12px; }
 }
+
+/* brand som oppdateringsknapp */
+.brand-btn { align-self: flex-start; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
+.brand-btn:hover { text-decoration: underline; text-underline-offset: 3px; }
+.brand-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
+/* værikon ved flyplassnavn */
+.now-icon { display: inline-flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 500; vertical-align: middle; }
+.now-icon.big-ic { margin-left: 12px; font-size: 22px; }
+.wi { display: block; overflow: visible; }
+
+/* landingsillustrasjon */
+.scene-panel { display: flex; flex-direction: column; gap: 12px; }
+.scene { width: 100%; height: auto; display: block; border-radius: 12px; background: var(--surface-2); }
+.rwy-num { font: 600 12px "JetBrains Mono", monospace; fill: #EAF1F7; }
+.scene-lbl { font: 600 10px Inter, system-ui, sans-serif; }
+.axis-lbl { font: 9px "JetBrains Mono", monospace; fill: var(--muted); }
+.facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.fact { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fact .mono { font-size: 15px; }
+.fact .xs { font-size: 11px; }
+.seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: 9px; background: var(--surface-2); }
+.seg button { min-height: 30px; padding: 0 10px; border: 0; border-radius: 7px; background: none; color: var(--soft); font-size: 12px; font-weight: 600; cursor: pointer; }
+.seg button.on { background: var(--text); color: var(--bg); }
+@media (max-width: 480px) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 12px; } }
+
+/* animasjoner */
+.wi-spin { animation: spin 14s linear infinite; }
+.wi-glow { animation: glow 4s ease-in-out infinite alternate; }
+.wi-drift { animation: bob 3.5s ease-in-out infinite alternate; }
+.wi-drift.slow { animation-duration: 5s; animation-delay: -2s; }
+.wi-drop { animation: drop 1s linear infinite; }
+.wi-flake { animation: flake 2.4s linear infinite; }
+.wi-fog { animation: fogline 3s ease-in-out infinite alternate; }
+.wi-flash { animation: flash 3.2s steps(1) infinite; }
+.sock { transform-box: view-box; animation: flutter 1s ease-in-out infinite alternate; }
+.sock.vrb { animation-name: swing; animation-timing-function: ease-in-out; }
+.drift { animation: drift 60s linear infinite; }
+.fall { animation: fall 1s linear infinite; }
+.streak { opacity: 0; animation: streak 2s linear infinite; }
+.rabbit { opacity: .15; animation: rabbit 1.2s steps(1) infinite; }
+.star { animation: twinkle 4s ease-in-out infinite alternate; }
+.sky-flash { opacity: 0; animation: skyflash 6s linear infinite; }
+.plane { transform: translate(var(--tx), var(--ty)) rotate(6deg); animation: plane 4s ease-in-out infinite alternate; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes glow { from { opacity: .8; } to { opacity: 1; } }
+@keyframes bob { from { transform: translateX(-.6px); } to { transform: translateX(.8px); } }
+@keyframes drop { 0% { transform: translateY(-1px); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(3.5px); opacity: 0; } }
+@keyframes flake { 0% { transform: translate(0, -1px); opacity: 0; } 25% { opacity: 1; } 50% { transform: translate(.8px, 1.2px); } 100% { transform: translate(-.4px, 3.5px); opacity: 0; } }
+@keyframes fogline { from { transform: translateX(-1.5px); } to { transform: translateX(1.5px); } }
+@keyframes flash { 0%, 62%, 72% { opacity: .35; } 66%, 76% { opacity: 1; } }
+@keyframes flutter { from { transform: rotate(calc(var(--amp) * -1)); } to { transform: rotate(var(--amp)); } }
+@keyframes swing { from { transform: rotate(calc(var(--amp) * -1)); } to { transform: rotate(var(--amp)); } }
+@keyframes drift { from { transform: translateX(0); } to { transform: translateX(var(--dist)); } }
+@keyframes fall { from { transform: translate(0, 0); } to { transform: translate(var(--dx), var(--dy)); } }
+@keyframes streak { 0% { transform: translate(0, 0); opacity: 0; } 30% { opacity: .45; } 100% { transform: translate(var(--dx), var(--dy)); opacity: 0; } }
+@keyframes rabbit { 0%, 18% { opacity: 1; } 19% { opacity: .15; } }
+@keyframes twinkle { from { opacity: .25; } to { opacity: .9; } }
+@keyframes skyflash { 0%, 80%, 83%, 86% { opacity: 0; } 81%, 84.5% { opacity: .18; } }
+@keyframes plane { from { transform: translate(var(--tx), var(--ty)) translateY(-1.5px) rotate(6deg); } to { transform: translate(var(--tx), var(--ty)) translateY(1.5px) rotate(5deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .wi-spin, .wi-glow, .wi-drift, .wi-drop, .wi-flake, .wi-fog, .wi-flash, .sock, .drift, .fall, .streak, .rabbit, .star, .sky-flash { animation: none; }
+  .plane { animation: none; }
+  .streak { opacity: .35; }
+}

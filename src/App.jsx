@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AIRPORTS } from '../lib/airports.js';
+import { WeatherIcon, LandingScene, sceneFacts, skyText } from './Weather.jsx';
 
 // ---------- hjelpere ----------
 const KEY = 'melkeruta.airport';
@@ -57,6 +58,16 @@ const I = {
 };
 
 // ---------- komponenter ----------
+function NowIcon({ now, big }) {
+  if (!now?.sky) return null;
+  return (
+    <span className={`now-icon${big ? ' big-ic' : ''}`} title={`Nå: ${skyText(now.sky)}`}>
+      <WeatherIcon sky={now.sky} size={big ? 40 : 30} />
+      {now.temp != null && <span className={`mono ${now.temp < 0 ? 'c-low' : 'c-high'}`}>{r0(now.temp)}°</span>}
+    </span>
+  );
+}
+
 function Ring({ p }) {
   return (
     <div className="ring-wrap">
@@ -141,11 +152,11 @@ function FlightTable({ flights, onOpen }) {
     <div className="table-box">
       <table>
         <thead>
-          <tr><th>Tid</th><th>Flight</th><th>Fra</th><th>Status</th><th>Vær ved landing</th><th className="right">Sjanse for landing</th></tr>
+          <tr><th>Tid</th><th>Flight</th><th>Fra</th><th>Status</th><th className="right">Sjanse for landing</th></tr>
         </thead>
         <tbody>
           {flights.map((f) => {
-            const v = verdict(f), p = pctOf(f), done = isDone(f), w = f.wx;
+            const v = verdict(f), p = pctOf(f), done = isDone(f);
             return (
               <tr key={f.id} className={done ? 'done' : ''}>
                 <td className="mono time-sm">{f.time}</td>
@@ -154,7 +165,6 @@ function FlightTable({ flights, onOpen }) {
                 <td className={`strong c-${f.status === 'E' ? 'mid' : v.cls}`}>
                   {f.status === 'E' && f.statusTime ? `Ny tid ${f.statusTime}` : done ? v.text : v.text}
                 </td>
-                <td>{!done && w ? `${dir3(w.dir)}° ${r0(w.spd)} m/s${w.gust > w.spd + 2 ? `, kast ${r0(w.gust)}` : ''}${f.worstWx ? ` · TEMPO ${r0(f.worstWx.spd)} m/s` : ''}` : '–'}</td>
                 <td className="right">
                   {!done && p != null ? (
                     <span className="mini">
@@ -172,37 +182,54 @@ function FlightTable({ flights, onOpen }) {
   );
 }
 
-function WindRose({ ap, w }) {
-  const pt = (deg, r) => [56 + r * Math.sin((deg * Math.PI) / 180), 56 - r * Math.cos((deg * Math.PI) / 180)];
-  const [lx, ly] = pt(ap.hdg + 180, 30);
-  const [hx, hy] = pt(ap.hdg, 30);
-  const hasDir = w.dir != null;
-  const [ax, ay] = pt(w.dir ?? 0, 50);
-  const [bx, by] = pt(w.dir ?? 0, 16);
-  const ang = (((w.dir ?? 0) + 180) * Math.PI) / 180;
-  const head = (s) => [bx - 8 * Math.sin(ang + s), by + 8 * Math.cos(ang + s)];
-  const [h1x, h1y] = head(0.5), [h2x, h2y] = head(-0.5);
-  return (
-    <svg width="112" height="112" viewBox="0 0 112 112" role="img" aria-label={`Vind fra ${dir3(w.dir)} grader, bane ${ap.rwy.join('/')}`}>
-      <circle cx="56" cy="56" r="50" fill="none" stroke="var(--track)" strokeWidth="2" />
-      <text x="56" y="16" fill="var(--muted)" fontSize="10" textAnchor="middle">N</text>
-      <rect x="20" y="51" width="72" height="10" rx="2" fill="var(--line)" transform={`rotate(${ap.hdg - 90} 56 56)`} />
-      <text x={lx} y={ly + 3} fill="var(--muted)" fontSize="9" textAnchor="middle" fontFamily="JetBrains Mono, monospace">{ap.rwy[0]}</text>
-      <text x={hx} y={hy + 3} fill="var(--muted)" fontSize="9" textAnchor="middle" fontFamily="JetBrains Mono, monospace">{ap.rwy[1]}</text>
-      {hasDir && <>
-        <path d={`M${ax} ${ay} L${bx} ${by}`} stroke="var(--mid)" strokeWidth="3" strokeLinecap="round" />
-        <path d={`M${h1x} ${h1y} L${bx} ${by} L${h2x} ${h2y}`} fill="none" stroke="var(--mid)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      </>}
-    </svg>
-  );
-}
-
 function Bar({ label, value, ratio }) {
   return (
     <div className="bar-row">
       <div className="bar-head"><span>{label}</span><span className="mono">{value}</span></div>
       <div className="bar"><span style={{ width: `${Math.min(100, Math.max(2, ratio * 100))}%`, background: loadColor(ratio) }} /></div>
     </div>
+  );
+}
+
+function WeatherPanel({ f, ap }) {
+  const [tempo, setTempo] = useState(false);
+  const t = f.worstWx;
+  const w = tempo && t ? t : f.wx;
+  const sky = tempo && t ? f.worstSky || f.sky : f.sky;
+  const L = ap.limits;
+  const { head, side } = sceneFacts(ap, w);
+  const ceilLow = w.ceil < 99999 && w.ceil < (w.minCeil ?? L.ceil);
+  const visLow = w.vis < (w.minVis ?? L.vis);
+  const facts = [
+    ['Vind', w.dir == null ? `VRB ${r0(w.spd)} m/s` : `${dir3(w.dir)}° ${r0(w.spd)} m/s`, w.gust > w.spd + 2 ? `kast ${r0(w.gust)} m/s` : 'jevn', w.gust / L.gust >= 0.9],
+    [w.rwy ? `Bane ${w.rwy}` : 'Bane', head == null ? '–' : head >= 0 ? `motvind ${r0(head)}` : `medvind ${r0(-head)}`,
+      side ? `sidevind ${w.xw.toFixed(0)} fra ${side}` : `sidevind ${w.xw.toFixed(0)}`, w.xw / L.xw >= 0.9 || w.tail / L.tail >= 0.9],
+    ['Skytak', w.ceil >= 99999 ? 'fritt' : `${w.ceil} ft`, `min ${w.minCeil ?? L.ceil} ft`, ceilLow],
+    ['Sikt', visTxt(w.vis), [skyText(sky), w.temp != null ? `${r0(w.temp)}°` : ''].filter(Boolean).join(' · ') || `min ${w.minVis ?? L.vis} m`, visLow],
+  ];
+  return (
+    <section className="panel scene-panel">
+      <div className="panel-head">
+        <span className="eyebrow">Vær ved landing · {f.src}</span>
+        {t && (
+          <div className="seg" role="tablist" aria-label="Prognose">
+            <button role="tab" aria-selected={!tempo} className={!tempo ? 'on' : ''} onClick={() => setTempo(false)}>Normalt</button>
+            <button role="tab" aria-selected={tempo} className={tempo ? 'on' : ''} onClick={() => setTempo(true)}>TEMPO</button>
+          </div>
+        )}
+      </div>
+      <LandingScene ap={ap} w={w} sky={sky} />
+      <div className="facts">
+        {facts.map(([label, val, sub, warn]) => (
+          <div key={label} className="fact">
+            <span className="muted xs">{label}</span>
+            <span className={`mono strong${warn ? ' c-high' : ''}`}>{val}</span>
+            <span className="muted xs">{sub}</span>
+          </div>
+        ))}
+      </div>
+      {t && !tempo && <span className="xs c-mid">Periodevis (TEMPO): {r0(t.spd)} m/s, kast {r0(t.gust)}{t.ceil < 99999 ? `, tak ${t.ceil} ft` : ''}{t.vis < 10000 ? `, sikt ${visTxt(t.vis)}` : ''}</span>}
+    </section>
   );
 }
 
@@ -236,17 +263,7 @@ function Detail({ f, data, onBack }) {
         </section>
       )}
 
-      {w && (
-        <section className="panel wind">
-          <WindRose ap={ap} w={w} />
-          <div className="stack-6">
-            <span className="eyebrow">Vind ved landing · {f.src}</span>
-            <span className="mono mid-size">{dir3(w.dir)}° {r0(w.spd)} m/s</span>
-            <span className="small soft">{w.rwy ? `Bane ${w.rwy}` : ''}{w.gust > w.spd + 2 ? ` · kast ${r0(w.gust)} m/s` : ''}</span>
-            {t && <span className="xs c-mid">TEMPO: {r0(t.spd)} m/s, kast {r0(t.gust)}{t.ceil < 99999 ? `, tak ${t.ceil} ft` : ''}</span>}
-          </div>
-        </section>
-      )}
+      {w && <WeatherPanel key={f.id} f={f} ap={ap} />}
 
       {w && (
         <section className="panel stack-14">
@@ -287,6 +304,7 @@ export default function App() {
     finally { setLoading(false); }
   }
   useEffect(() => { save(ap); setOpenId(null); fetchDay(ap); }, [ap]);
+  const refresh = () => { setOpenId(null); fetchDay(ap); };
 
   const lists = useMemo(() => {
     const fl = data?.flights || [];
@@ -301,7 +319,7 @@ export default function App() {
     <div className="page">
       <header className="topbar">
         <div className="brand">
-          <span className="eyebrow accent">Melkeruta</span>
+          <button className="eyebrow accent brand-btn" onClick={refresh} title="Oppdater">Melkeruta</button>
           <label className="picker">
             <span className="sr-only">Velg flyplass</span>
             <select value={ap} onChange={(e) => setAp(e.target.value)}>
@@ -310,6 +328,7 @@ export default function App() {
               ))}
             </select>
             <span className="picker-label">{name}</span>
+            {data?.airport.iata === ap && <NowIcon now={data.now} />}
             <Icon d={I.chevDown} size={18} color="var(--muted)" />
           </label>
           <span className="desk-only muted small">Widerøe-landinger i Finnmark{updated ? ` · oppdatert ${updated}` : ''}</span>
@@ -342,7 +361,7 @@ export default function App() {
           {data && !open && (
             <>
               <div className="main-head">
-                <h1 className="desk-only title">{data.airport.name}</h1>
+                <h1 className="desk-only title">{data.airport.name}<NowIcon now={data.now} big /></h1>
                 <div className="tabs" role="tablist">
                   {[['today', 'I dag'], ['tomorrow', 'I morgen']].map(([k, l]) => (
                     <button key={k} role="tab" aria-selected={day === k} className={day === k ? 'on' : ''} onClick={() => setDay(k)}>
