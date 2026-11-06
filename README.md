@@ -1,4 +1,6 @@
-# Melkeruta – landingssjanse Finnmark
+# Melkeruten – landingssjanse Finnmark
+
+Live: https://melkeruten.no
 
 Viser Widerøe-ankomster i dag og i morgen for valgt flyplass i Finnmark, med estimert sjanse for innstilling basert på TAF/METAR, værprognose og (etter hvert) egen historikk.
 

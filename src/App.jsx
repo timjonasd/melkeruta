@@ -3,8 +3,9 @@ import { AIRPORTS } from '../lib/airports.js';
 import { WeatherIcon, LandingScene, sceneFacts, skyText } from './Weather.jsx';
 
 // ---------- hjelpere ----------
-const KEY = 'melkeruta.airport';
-const load = () => { try { return localStorage.getItem(KEY) || 'HVG'; } catch { return 'HVG'; } };
+const KEY = 'melkeruten.airport';
+const OLD_KEY = 'melkeruta.airport'; // før navnebytte – beholder brukerens valgte flyplass
+const load = () => { try { return localStorage.getItem(KEY) || localStorage.getItem(OLD_KEY) || 'HVG'; } catch { return 'HVG'; } };
 const save = (v) => { try { localStorage.setItem(KEY, v); } catch {} };
 
 const LARGE = new Set(['ALF', 'LKL', 'KKN']);
@@ -460,7 +461,7 @@ export default function App() {
     <div className="page">
       <header className="topbar">
         <div className="brand">
-          <button className="eyebrow accent brand-btn" onClick={refresh} title="Oppdater">Melkeruta</button>
+          <button className="eyebrow accent brand-btn" onClick={refresh} title="Oppdater">Melkeruten</button>
           <div className="picker">
             <span className="picker-label">{name}</span>
             {data?.airport.iata === ap && <NowIcon now={data.now} />}
@@ -531,7 +532,7 @@ export default function App() {
           )}
 
           <footer className="xs muted foot">
-            Estimat fra TAF og regelmodell · {data?.storage ? `historikk: ${data.historyCount} registrerte ankomster${data.historyHere != null ? ` (${data.historyHere} her)` : ''}` : 'database ikke koblet til'}. Ikke offisiell informasjon – sjekk widerøe.no.
+            Estimat fra TAF og regelmodell · {data?.storage ? `historikk: ${data.historyCount} registrerte ankomster${data.historyHere != null ? ` (${data.historyHere} her)` : ''}` : 'database ikke koblet til'}. Ikke offisiell informasjon – sjekk widerøe.no. Melkeruten er ikke tilknyttet Widerøe eller Avinor.
           </footer>
         </main>
       </div>
