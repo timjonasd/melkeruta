@@ -1,6 +1,6 @@
 const xml = `<?xml version="1.0"?><airport name="HVG"><flights lastUpdate="2026-11-05T10:00:00Z">
 <flight uniqueID="1"><airline>WF</airline><flight_id>WF920</flight_id><dom_int>D</dom_int><schedule_time>2026-11-05T07:10:00Z</schedule_time><arr_dep>A</arr_dep><airport>HFT</airport><status code="A" time="2026-11-05T07:14:00Z"/></flight>
-<flight uniqueID="2"><airline>WF</airline><flight_id>WF922</flight_id><dom_int>D</dom_int><schedule_time>2026-11-05T13:40:00Z</schedule_time><arr_dep>A</arr_dep><airport>TOS</airport><via_airport>HFT</via_airport></flight>
+<flight uniqueID="2"><airline>WF</airline><flight_id>WF922</flight_id><dom_int>D</dom_int><schedule_time>2026-11-05T13:40:00Z</schedule_time><arr_dep>A</arr_dep><airport>TOS</airport><via_airport>HFT,MEH</via_airport><status code="E" time="2026-11-05T13:55:00Z"/></flight>
 <flight uniqueID="3"><airline>WF</airline><flight_id>WF924</flight_id><dom_int>D</dom_int><schedule_time>2026-11-06T08:00:00Z</schedule_time><arr_dep>A</arr_dep><airport>MEH</airport></flight>
 <flight uniqueID="4"><airline>DY</airline><flight_id>DY1</flight_id><dom_int>D</dom_int><schedule_time>2026-11-05T12:00:00Z</schedule_time><arr_dep>A</arr_dep><airport>OSL</airport></flight>
 </flights></airport>`;
@@ -14,5 +14,5 @@ globalThis.fetch = async (u) => {
 const RealDate = Date; const fixed = new RealDate('2026-11-05T10:00:00Z').getTime();
 globalThis.Date = class extends RealDate { constructor(...a) { super(...(a.length ? a : [fixed])); } static now() { return fixed; } };
 const { default: h } = await import('../api/day.js');
-const res = { code: 200, status(c) { this.code = c; return this; }, setHeader() {}, json(j) { console.log(this.code, JSON.stringify(j, null, 1).slice(0, 2500)); } };
+const res = { code: 200, status(c) { this.code = c; return this; }, setHeader() {}, json(j) { console.log(this.code, JSON.stringify(j, null, 1)); } };
 await h({ query: { airport: 'hvg' } }, res);

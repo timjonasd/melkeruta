@@ -1,7 +1,7 @@
 import { byIata, airportName } from '../lib/airports.js';
 import { fetchArrivals } from '../lib/avinor.js';
-import { fetchWeather } from '../lib/weather.js';
-import { ruleRisk, calibrate } from '../lib/model.js';
+import { fetchWeather, wxPhrase } from '../lib/weather.js';
+import { ruleRisk, calibrate, condRisk } from '../lib/model.js';
 import { getHistory, saveSnapshot, redis } from '../lib/store.js';
 import { osloDate, osloHM, hoursSinceOsloMidnight, addDays } from '../lib/time.js';
 
@@ -56,9 +56,15 @@ export default async function handler(req, res) {
     await Promise.allSettled(snaps);
     out.sort((a, b) => new Date(a.sched) - new Date(b.sched));
 
+    const last = wx.metars.at(-1);
+    const current = last
+      ? { time: osloHM(last.time), ...condRisk(ap, last.cond).wx, phrase: wxPhrase(last.raw) }
+      : null;
+
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
     res.json({
-      airport: { iata, name: ap.name, icao: ap.icao, limits: { xw: ap.xw, gust: ap.gust, ceil: ap.ceil, vis: ap.vis } },
+      airport: { iata, name: ap.name, icao: ap.icao, rwy: ap.rwy, hdg: ap.hdg, limits: { xw: ap.xw, gust: ap.gust, tail: ap.tail, ceil: ap.ceil, vis: ap.vis } },
+      current,
       updated: now,
       metar: wx.metars.at(-1)?.raw || null,
       taf: wx.taf?.raw || null,
