@@ -13,8 +13,10 @@ const GROUPS = [
 ];
 
 const isDone = (f) => f.status === 'A' || f.status === 'C';
-const pctOf = (f) => (f.pCancel == null ? null : Math.round(f.pCancel * 100));
-const riskColor = (p) => (p < 15 ? 'var(--low)' : p < 50 ? 'var(--mid)' : 'var(--high)');
+// Sjanse for landing i prosent (1 - risiko for innstilling)
+const pctOf = (f) => (f.pCancel == null ? null : Math.round((1 - f.pCancel) * 100));
+const chanceLevel = (p) => (p >= 85 ? { cls: 'low', word: 'Stor' } : p >= 50 ? { cls: 'mid', word: 'Medium' } : { cls: 'high', word: 'Liten' });
+const riskColor = (p) => `var(--${chanceLevel(p).cls})`;
 const loadColor = (r) => (r < 0.6 ? 'var(--low)' : r < 0.9 ? 'var(--mid)' : 'var(--high)');
 const r0 = (x) => Math.round(x);
 const dir3 = (d) => (d == null ? 'VRB' : String(Math.round(d / 10) * 10 % 360 || 360).padStart(3, '0'));
@@ -26,9 +28,8 @@ function verdict(f) {
   if (f.status === 'A') return { cls: 'done', text: `Landet ${f.statusTime || ''}`.trim() };
   const p = pctOf(f);
   if (p == null) return { cls: 'muted', text: 'Mangler værdata' };
-  if (p < 15) return { cls: 'low', text: 'Flys som normalt' };
-  if (p < 50) return { cls: 'mid', text: 'Usikkert' };
-  return { cls: 'high', text: 'Sannsynlig innstilt' };
+  const l = chanceLevel(p);
+  return { cls: l.cls, word: l.word, text: `${l.word} sjanse for landing · ${p} %` };
 }
 
 function sortFlights(list) {
@@ -62,7 +63,7 @@ function Ring({ p }) {
       <div className="ring" style={{ background: `conic-gradient(${riskColor(p)} ${Math.max(p, 2)}%, var(--track) 0)` }}>
         <span>{p}%</span>
       </div>
-      <span className="ring-label">risiko</span>
+      <span className="ring-label">landing</span>
     </div>
   );
 }
@@ -140,7 +141,7 @@ function FlightTable({ flights, onOpen }) {
     <div className="table-box">
       <table>
         <thead>
-          <tr><th>Tid</th><th>Flight</th><th>Fra</th><th>Status</th><th>Vær ved landing</th><th className="right">Risiko</th></tr>
+          <tr><th>Tid</th><th>Flight</th><th>Fra</th><th>Status</th><th>Vær ved landing</th><th className="right">Sjanse for landing</th></tr>
         </thead>
         <tbody>
           {flights.map((f) => {
@@ -158,7 +159,7 @@ function FlightTable({ flights, onOpen }) {
                   {!done && p != null ? (
                     <span className="mini">
                       <span className="mini-bar"><span style={{ width: `${Math.max(p, 2)}%`, background: riskColor(p) }} /></span>
-                      <span className="mono">{p}%</span>
+                      <span className="mono">{chanceLevel(p).word} · {p}%</span>
                     </span>
                   ) : '–'}
                 </td>
@@ -222,16 +223,16 @@ function Detail({ f, data, onBack }) {
         <section className="panel">
           <div className="risk-head">
             <div className="stack-2">
-              <span className="eyebrow">Risiko for innstilling</span>
-              <span className={`strong c-${v.cls}`}>{v.text}</span>
+              <span className="eyebrow">Sjanse for landing</span>
+              <span className={`strong c-${v.cls}`}>{v.word} sjanse</span>
             </div>
             <span className="mono huge">{p}<span className="unit-l">%</span></span>
           </div>
           <div className="scale">
             <span className="fill" style={{ width: `${Math.max(p, 1)}%`, background: riskColor(p) }} />
-            <span className="tick" style={{ left: '15%' }} /><span className="tick" style={{ left: '50%' }} />
+            <span className="tick" style={{ left: '50%' }} /><span className="tick" style={{ left: '85%' }} />
           </div>
-          <div className="scale-labels xs muted"><span>Normalt &lt;15 %</span><span>Usikkert</span><span className="right">Innstilt &gt;50 %</span></div>
+          <div className="scale-labels xs muted"><span>Liten &lt;50 %</span><span>Medium</span><span className="right">Stor ≥85 %</span></div>
         </section>
       )}
 
