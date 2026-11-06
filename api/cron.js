@@ -3,8 +3,9 @@
 import { AIRPORTS } from '../lib/airports.js';
 import { fetchArrivals } from '../lib/avinor.js';
 import { fetchWeather } from '../lib/weather.js';
-import { ruleRisk, condRisk } from '../lib/model.js';
-import { addHistory, getSnapshot, saveSnapshot, redis } from '../lib/store.js';
+import { ruleRisk } from '../lib/model.js';
+import { saveSnapshot, redis } from '../lib/store.js';
+import { recordOutcome } from '../lib/record.js';
 
 export default async function handler(req, res) {
   const secret = process.env.CRON_SECRET;
@@ -23,22 +24,7 @@ export default async function handler(req, res) {
           if (r && !f.status) { await saveSnapshot(f, ap.iata, r); s.snaps++; }
           continue;
         }
-        if (now - f.sched < 3600e3) continue; // vent til status er avklart
-        const outcome = f.status === 'A' ? 'ok' : f.status === 'C' ? 'cancelled' : null;
-        if (!outcome) continue;
-        // Foretrekk observert vær (METAR nærmest planlagt tid), ellers prognose-snapshot
-        let feat = null, featSrc = null, ruleP = null;
-        const near = wx.metars
-          .map((m) => ({ m, d: Math.abs(m.time - f.sched) }))
-          .filter((x) => x.d <= 40 * 60e3)
-          .sort((a, b) => a.d - b.d)[0];
-        if (near) { const r = condRisk(ap, near.m.cond); feat = r.feat; featSrc = 'METAR'; ruleP = r.p; }
-        else {
-          const snap = await getSnapshot(f.id);
-          if (snap) { feat = snap.feat; featSrc = 'snapshot'; ruleP = snap.ruleP; }
-        }
-        if (!feat) continue;
-        if (await addHistory({ id: f.id, ap: ap.iata, flight: f.flight, sched: f.sched.toISOString(), outcome, feat, featSrc, ruleP })) s.added++;
+        if (await recordOutcome(ap, f, wx)) s.added++;
       }
     } catch (e) {
       s.err = String(e.message || e);

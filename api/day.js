@@ -2,7 +2,8 @@ import { byIata, airportName } from '../lib/airports.js';
 import { fetchArrivals } from '../lib/avinor.js';
 import { fetchWeather, wxPhrase, iconFrom, lfAt } from '../lib/weather.js';
 import { ruleRisk, calibrate, condRisk } from '../lib/model.js';
-import { getHistory, saveSnapshot, redis } from '../lib/store.js';
+import { getHistory, saveSnapshot, historyCount, redis } from '../lib/store.js';
+import { recordOutcome } from '../lib/record.js';
 import { osloDate, osloHM, hoursSinceOsloMidnight, addDays } from '../lib/time.js';
 
 export default async function handler(req, res) {
@@ -32,6 +33,7 @@ export default async function handler(req, res) {
       const rule = ruleRisk(ap, wx, f.sched);
       const cal = rule ? calibrate(rule, history, iata) : null;
       if (rule && f.sched > now && !f.status) snaps.push(saveSnapshot(f, iata, rule));
+      if (f.status === 'A' || f.status === 'C') snaps.push(recordOutcome(ap, f, wx));
       out.push({
         id: f.id,
         flight: f.flight,
@@ -56,6 +58,8 @@ export default async function handler(req, res) {
       });
     }
     await Promise.allSettled(snaps);
+    const total = await Promise.resolve(historyCount()).catch(() => history.length);
+    const here = history.filter((h) => h.ap === iata).length;
     out.sort((a, b) => new Date(a.sched) - new Date(b.sched));
 
     const last = wx.metars.at(-1);
@@ -77,7 +81,8 @@ export default async function handler(req, res) {
       updated: now,
       metar: wx.metars.at(-1)?.raw || null,
       taf: wx.taf?.raw || null,
-      historyCount: history.length,
+      historyCount: total,
+      historyHere: here,
       storage: !!redis,
       flights: out,
     });

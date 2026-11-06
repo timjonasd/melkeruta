@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AIRPORTS } from '../lib/airports.js';
 import { WeatherIcon, LandingScene, sceneFacts, skyText } from './Weather.jsx';
 
@@ -18,7 +18,6 @@ const isDone = (f) => f.status === 'A' || f.status === 'C';
 const pctOf = (f) => (f.pCancel == null ? null : Math.round((1 - f.pCancel) * 100));
 const chanceLevel = (p) => (p >= 85 ? { cls: 'low', word: 'Stor' } : p >= 50 ? { cls: 'mid', word: 'Medium' } : { cls: 'high', word: 'Liten' });
 const riskColor = (p) => `var(--${chanceLevel(p).cls})`;
-const loadColor = (r) => (r < 0.6 ? 'var(--low)' : r < 0.9 ? 'var(--mid)' : 'var(--high)');
 const r0 = (x) => Math.round(x);
 const dir3 = (d) => (d == null ? 'VRB' : String(Math.round(d / 10) * 10 % 360 || 360).padStart(3, '0'));
 const ceilTxt = (c) => (c >= 99999 ? 'fritt' : `${c} ft`);
@@ -52,6 +51,7 @@ const Icon = ({ d, size = 20, label, color = 'currentColor' }) => (
 const I = {
   refresh: ['M21 12a9 9 0 1 1-2.64-6.36', 'M21 3v6h-6'],
   chevDown: ['M6 9l6 6 6-6'],
+  chevRight: ['M9 6l6 6-6 6'],
   back: ['M15 18l-6-6 6-6'],
   check: ['M20 6L9 17l-5-5'],
   x: ['M18 6L6 18', 'M6 6l12 12'],
@@ -112,36 +112,25 @@ function NowPanel({ data }) {
 function FlightCard({ f, onOpen }) {
   const v = verdict(f);
   const p = pctOf(f);
-  if (isDone(f)) {
-    return (
-      <li className="card done">
-        <div className="card-time">
-          <span className="mono time">{f.time}</span>
-          <span className={`xs ${f.status === 'C' ? 'c-high strong' : 'muted'}`}>{v.text}</span>
-        </div>
-        <div className="card-body">
-          <span className="strong">{f.flight} <span className="muted normal">{route(f)}</span></span>
-          {via(f) && <span className="muted xs">{via(f)}</span>}
-        </div>
-        {f.status === 'C'
-          ? <Icon d={I.x} size={24} color="var(--high)" label="Innstilt" />
-          : <Icon d={I.check} size={24} color="var(--accent)" label="Landet" />}
-      </li>
-    );
-  }
+  const done = isDone(f);
   return (
     <li>
-      <button className="card open" onClick={() => onOpen(f.id)}>
+      <button className={`card ${done ? 'done' : 'open'}`} onClick={() => onOpen(f.id)} aria-label={`${f.flight} ${f.time}, ${v.text}. Vis detaljer`}>
         <div className="card-time">
           <span className="mono time">{f.time}</span>
-          {f.status === 'E' && f.statusTime && <span className="xs c-mid strong">ny tid {f.statusTime}</span>}
+          {done
+            ? <span className={`xs ${f.status === 'C' ? 'c-high strong' : 'muted'}`}>{v.text}</span>
+            : f.status === 'E' && f.statusTime && <span className="xs c-mid strong">ny tid {f.statusTime}</span>}
         </div>
         <div className="card-body">
           <span className="strong">{f.flight} <span className="muted normal">{route(f)}</span></span>
-          <span className="muted xs">{[via(f), f.src].filter(Boolean).join(' · ')}</span>
-          <span className={`xs c-${v.cls}`}>{v.text}</span>
+          <span className="muted xs">{done ? via(f) : [via(f), f.src].filter(Boolean).join(' · ')}</span>
+          {!done && <span className={`xs c-${v.cls}`}>{v.text}</span>}
         </div>
-        {p != null && <Ring p={p} />}
+        {done
+          ? (f.status === 'C' ? <Icon d={I.x} size={24} color="var(--high)" label="Innstilt" /> : <Icon d={I.check} size={24} color="var(--accent)" label="Landet" />)
+          : p != null && <Ring p={p} />}
+        <Icon d={I.chevRight} size={18} color="var(--muted)" />
       </button>
     </li>
   );
@@ -158,9 +147,11 @@ function FlightTable({ flights, onOpen }) {
           {flights.map((f) => {
             const v = verdict(f), p = pctOf(f), done = isDone(f);
             return (
-              <tr key={f.id} className={done ? 'done' : ''}>
+              <tr key={f.id} className={`row-link${done ? ' done' : ''}`} tabIndex={0} onClick={() => onOpen(f.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(f.id); } }}
+                aria-label={`${f.flight} ${f.time}. Vis detaljer`}>
                 <td className="mono time-sm">{f.time}</td>
-                <td className="strong">{done ? f.flight : <button className="linklike" onClick={() => onOpen(f.id)}>{f.flight}</button>}</td>
+                <td className="strong">{f.flight}</td>
                 <td>{f.fromName}{f.viaName ? ` via ${f.viaName}` : ''}</td>
                 <td className={`strong c-${f.status === 'E' ? 'mid' : v.cls}`}>
                   {f.status === 'E' && f.statusTime ? `Ny tid ${f.statusTime}` : done ? v.text : v.text}
@@ -172,6 +163,7 @@ function FlightTable({ flights, onOpen }) {
                       <span className="mono">{chanceLevel(p).word} · {p}%</span>
                     </span>
                   ) : '–'}
+                  <Icon d={I.chevRight} size={16} color="var(--muted)" />
                 </td>
               </tr>
             );
@@ -182,12 +174,70 @@ function FlightTable({ flights, onOpen }) {
   );
 }
 
-function Bar({ label, value, ratio }) {
+// Margin: 1 = langt innenfor, 0 = på grensen, <0 = utenfor. Samme retning for alle parametere.
+const marginOf = (val, lim, kind) => (kind === 'max' ? (lim - val) / lim : val >= 99999 ? 1 : (val - lim) / Math.max(val, 1));
+const LIMIT_AT = 22; // grensemarkørens plass på skalaen (%)
+const posOf = (m) => (m >= 0 ? LIMIT_AT + Math.min(m, 1) * (100 - LIMIT_AT) : Math.max(0, LIMIT_AT + Math.max(m, -1) * LIMIT_AT));
+const marginState = (m) => (m < 0 ? { cls: 'high', text: 'Utenfor' } : m < 0.15 ? { cls: 'mid', text: 'Nær grensen' } : { cls: 'low', text: 'Innenfor' });
+
+function MarginRow({ label, kind, val, tval, lim, unit, fmt, note }) {
+  const m = marginOf(val, lim, kind);
+  const mt = tval != null ? marginOf(tval, lim, kind) : null;
+  const worst = mt != null ? Math.min(m, mt) : m;
+  const st = marginState(worst);
+  const diff = kind === 'max' ? lim - val : val - lim;
+  const rel = val >= 99999 ? 'ingen skytak' : diff >= 0
+    ? `${fmt(diff)} ${kind === 'max' ? 'under' : 'over'} ${kind === 'max' ? 'grensen' : 'minimum'}`
+    : `${fmt(-diff)} ${kind === 'max' ? 'over grensen' : 'under minimum'}`;
   return (
-    <div className="bar-row">
-      <div className="bar-head"><span>{label}</span><span className="mono">{value}</span></div>
-      <div className="bar"><span style={{ width: `${Math.min(100, Math.max(2, ratio * 100))}%`, background: loadColor(ratio) }} /></div>
+    <div className="m-row">
+      <div className="m-head">
+        <span className="strong small">{label}</span>
+        <span className={`m-chip c-${st.cls}`}>{st.text}</span>
+      </div>
+      <div className="m-track" aria-hidden="true">
+        <span className="m-out" style={{ width: `${LIMIT_AT}%` }} />
+        <span className="m-limit" style={{ left: `${LIMIT_AT}%` }} />
+        {mt != null && Math.abs(posOf(mt) - posOf(m)) > 1 && <span className={`m-dot hollow b-${marginState(mt).cls}`} style={{ left: `${posOf(mt)}%` }} title="TEMPO" />}
+        <span className={`m-dot bg-${marginState(m).cls}`} style={{ left: `${posOf(m)}%` }} />
+      </div>
+      <div className="m-foot xs">
+        <span><span className="mono strong">{val >= 99999 ? 'fritt' : `${fmt(val)}`}</span> <span className="muted">{rel}</span></span>
+        <span className="muted mono">{kind === 'max' ? 'maks' : 'min'} {fmt(lim)}{note ? ` ${note}` : ''}</span>
+      </div>
+      {mt != null && mt < m && <span className="xs c-mid">TEMPO: {tval >= 99999 ? 'fritt' : fmt(tval)}</span>}
     </div>
+  );
+}
+
+function Margins({ f, ap }) {
+  const L = ap.limits, w = f.wx, t = f.worstWx;
+  const ms = (v) => `${v.toFixed(1).replace('.', ',').replace(',0', '')} m/s`;
+  const ft = (v) => `${Math.round(v)} ft`;
+  const m = (v) => visTxt(Math.round(v));
+  const rows = [
+    { label: 'Vindkast', kind: 'max', val: w.gust, tval: t?.gust, lim: L.gust, fmt: ms },
+    { label: `Sidevind${w.rwy ? ` · bane ${w.rwy}` : ''}`, kind: 'max', val: w.xw, tval: t?.xw, lim: L.xw, fmt: ms },
+    ...(w.tail > 0 || t?.tail > 0 ? [{ label: 'Medvind', kind: 'max', val: w.tail, tval: t?.tail, lim: L.tail, fmt: ms }] : []),
+    { label: `Skytak${w.apch === 'sirkling' ? ' · sirkling' : ''}`, kind: 'min', val: w.ceil, tval: t?.ceil, lim: w.minCeil ?? L.ceil, fmt: ft },
+    { label: 'Sikt', kind: 'min', val: w.vis, tval: t?.vis, lim: w.minVis ?? L.vis, fmt: m },
+  ];
+  const worst = Math.min(...rows.map((r) => Math.min(marginOf(r.val, r.lim, r.kind), r.tval != null ? marginOf(r.tval, r.lim, r.kind) : 1)));
+  const out = rows.filter((r) => marginOf(r.val, r.lim, r.kind) < 0).map((r) => r.label.split(' ·')[0].toLowerCase());
+  const st = marginState(worst);
+  const summary = out.length ? `Utenfor grensene: ${out.join(', ')}` : st.cls === 'mid' ? 'Innenfor, men nær grensen' : 'Alle forhold innenfor grensene';
+  return (
+    <section className="panel stack-14">
+      <div className="panel-head">
+        <span className="eyebrow">Mot grensene</span>
+        <span className={`small strong c-${st.cls}`}>{summary}</span>
+      </div>
+      <div className="m-legend xs muted" aria-hidden="true">
+        <span style={{ left: `${LIMIT_AT}%` }}>grense</span><span className="m-good">god margin →</span>
+      </div>
+      {rows.map((r) => <MarginRow key={r.label} {...r} />)}
+      {t && <span className="xs muted">Hul prikk = periodevis (TEMPO).</span>}
+    </section>
   );
 }
 
@@ -246,7 +296,17 @@ function Detail({ f, data, onBack }) {
         <span className="muted small">{path}{f.status === 'E' && f.statusTime ? <> · <span className="c-mid strong">ny tid {f.statusTime}</span></> : null}</span>
       </div>
 
-      {p != null && (
+      {isDone(f) && (
+        <section className={`panel status-panel ${f.status === 'C' ? 'b-high' : 'b-low'}`}>
+          <Icon d={f.status === 'C' ? I.x : I.check} size={28} color={f.status === 'C' ? 'var(--high)' : 'var(--accent)'} />
+          <div className="stack-2">
+            <span className="strong">{f.status === 'C' ? 'Innstilt' : `Landet${f.statusTime ? ` kl. ${f.statusTime}` : ''}`}</span>
+            {p != null && <span className="xs muted">Estimatet var {chanceLevel(p).word.toLowerCase()} sjanse for landing ({p} %)</span>}
+          </div>
+        </section>
+      )}
+
+      {!isDone(f) && p != null && (
         <section className="panel">
           <div className="risk-head">
             <div className="stack-2">
@@ -265,22 +325,102 @@ function Detail({ f, data, onBack }) {
 
       {w && <WeatherPanel key={f.id} f={f} ap={ap} />}
 
-      {w && (
-        <section className="panel stack-14">
-          <span className="eyebrow">Mot grensene</span>
-          <Bar label="Kast" value={`${w.gust.toFixed(1)} / ${L.gust} m/s`} ratio={(t ? Math.max(w.gust, t.gust) : w.gust) / L.gust} />
-          <Bar label="Sidevind" value={`${w.xw.toFixed(1)} / ${L.xw} m/s`} ratio={(t ? Math.max(w.xw, t.xw) : w.xw) / L.xw} />
-          {w.tail > 0 && <Bar label="Medvind" value={`${w.tail.toFixed(1)} / ${L.tail} m/s`} ratio={w.tail / L.tail} />}
-          <Bar label="Skytak" value={`${ceilTxt(w.ceil)} · min ${w.minCeil ?? L.ceil}${w.apch === 'sirkling' ? ' (sirkling)' : ''}`} ratio={(w.minCeil ?? L.ceil) / Math.max(50, t ? Math.min(w.ceil, t.ceil) : w.ceil)} />
-          <Bar label="Sikt" value={`${visTxt(w.vis)} · min ${w.minVis ?? L.vis} m`} ratio={(w.minVis ?? L.vis) / Math.max(50, t ? Math.min(w.vis, t.vis) : w.vis)} />
-        </section>
-      )}
+      {w && <Margins f={f} ap={ap} />}
 
       <section className="panel dashed stack-4">
         <span className="strong small">Lignende forhold: {f.similar?.n || 0} registrert{f.similar?.n ? ` · ${f.similar.cancels} innstilt` : ''}</span>
         <span className="xs muted">{f.similar?.n ? 'Estimatet er justert mot historikken.' : 'Estimatet er regelbasert til historikken har bygd seg opp.'}</span>
       </section>
     </div>
+  );
+}
+
+function AirportSheet({ current, onPick, onClose }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const k = (e) => e.key === 'Escape' && onClose();
+    document.addEventListener('keydown', k);
+    document.body.style.overflow = 'hidden';
+    ref.current?.querySelector('.sheet-item.active, .sheet-item')?.focus();
+    return () => { document.removeEventListener('keydown', k); document.body.style.overflow = ''; };
+  }, [onClose]);
+  return (
+    <div className="sheet-wrap" onClick={onClose}>
+      <div className="sheet" role="dialog" aria-modal="true" aria-label="Velg flyplass" ref={ref} onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-grip" aria-hidden="true" />
+        <div className="sheet-head">
+          <span className="strong">Velg flyplass</span>
+          <button className="icon-btn sm" onClick={onClose} aria-label="Lukk"><Icon d={I.x} size={18} /></button>
+        </div>
+        {GROUPS.map(([g, list]) => (
+          <div key={g} className="sheet-group">
+            <span className="eyebrow side-head">{g}</span>
+            {list.map((a) => (
+              <button key={a.iata} className={`sheet-item${a.iata === current ? ' active' : ''}`} onClick={() => onPick(a.iata)} aria-current={a.iata === current ? 'true' : undefined}>
+                <span className="mono xs sheet-code">{a.iata}</span>
+                <span className="sheet-name">{a.name}</span>
+                {a.iata === current && <Icon d={I.check} size={18} color="var(--accent)" />}
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------- statistikk ----------
+const MONTHS = ['januar', 'februar', 'mars', 'april', 'mai', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'desember'];
+const monthName = (m) => { const [y, mm] = m.split('-'); return `${MONTHS[+mm - 1]} ${y}`; };
+
+function Stats({ code, name }) {
+  const [st, setSt] = useState(null);
+  const [err, setErr] = useState(null);
+  useEffect(() => {
+    let live = true;
+    setSt(null); setErr(null);
+    fetch(`/api/stats?airport=${code}`).then((r) => r.json()).then((j) => live && (j.error ? setErr(j.error) : setSt(j))).catch((e) => live && setErr(String(e)));
+    return () => { live = false; };
+  }, [code]);
+  if (err) return <p className="panel c-high">Kunne ikke hente statistikk: {err}</p>;
+  if (!st) return <p className="muted pad">Henter statistikk…</p>;
+  if (!st.months.length) return (
+    <section className="panel dashed stack-4">
+      <span className="strong small">Ingen registrerte landinger for {name} ennå</span>
+      <span className="xs muted">Statistikken bygger seg opp automatisk etter hvert som landinger og innstillinger registreres.</span>
+    </section>
+  );
+  const reg = (x) => (x.total ? String(Math.round((x.ok / x.total) * 1000) / 10).replace('.', ',') : 0);
+  const max = Math.max(...st.months.map((x) => x.total));
+  return (
+    <>
+      <section className="panel">
+        <span className="eyebrow">Totalt registrert</span>
+        <div className="stat-grid">
+          <div className="stack-2"><span className="mono big">{st.sum.total}</span><span className="xs muted">ankomster</span></div>
+          <div className="stack-2"><span className="mono big c-low">{st.sum.ok}</span><span className="xs muted">landet</span></div>
+          <div className="stack-2"><span className="mono big c-high">{st.sum.cancelled}</span><span className="xs muted">innstilt</span></div>
+          <div className="stack-2"><span className="mono big">{reg(st.sum)} %</span><span className="xs muted">regularitet</span></div>
+        </div>
+        {st.first && <span className="xs muted">Data fra {new Date(st.first).toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' })}</span>}
+      </section>
+      <section className="panel stack-14">
+        <span className="eyebrow">Per måned</span>
+        {st.months.map((x) => (
+          <div key={x.month} className="month">
+            <div className="bar-head">
+              <span className="strong" style={{ textTransform: 'capitalize' }}>{monthName(x.month)}</span>
+              <span className="mono small">{reg(x)} % landet</span>
+            </div>
+            <div className="month-bar" style={{ width: `${Math.max(8, (x.total / max) * 100)}%` }} aria-hidden="true">
+              <span style={{ flex: x.ok, background: 'var(--low)' }} />
+              <span style={{ flex: x.cancelled, background: 'var(--high)' }} />
+            </div>
+            <span className="xs muted">{x.total} ankomster · <span className="c-low">{x.ok} landet</span> · <span className={x.cancelled ? 'c-high' : ''}>{x.cancelled} innstilt</span> · {x.days} dager med data</span>
+          </div>
+        ))}
+      </section>
+    </>
   );
 }
 
@@ -292,6 +432,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [day, setDay] = useState('today');
   const [openId, setOpenId] = useState(null);
+  const [picking, setPicking] = useState(false);
 
   async function fetchDay(code) {
     setLoading(true); setErr(null);
@@ -310,7 +451,7 @@ export default function App() {
     const fl = data?.flights || [];
     return { today: sortFlights(fl.filter((f) => f.day === 'today')), tomorrow: sortFlights(fl.filter((f) => f.day === 'tomorrow')) };
   }, [data]);
-  const shown = lists[day];
+  const shown = lists[day] || [];
   const open = data?.flights.find((f) => f.id === openId);
   const name = AIRPORTS.find((a) => a.iata === ap)?.name;
   const updated = data ? new Date(data.updated).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' }) : null;
@@ -320,23 +461,21 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <button className="eyebrow accent brand-btn" onClick={refresh} title="Oppdater">Melkeruta</button>
-          <label className="picker">
-            <span className="sr-only">Velg flyplass</span>
-            <select value={ap} onChange={(e) => setAp(e.target.value)}>
-              {GROUPS.map(([g, list]) => (
-                <optgroup key={g} label={g}>{list.map((a) => <option key={a.iata} value={a.iata}>{a.name}</option>)}</optgroup>
-              ))}
-            </select>
+          <div className="picker">
             <span className="picker-label">{name}</span>
             {data?.airport.iata === ap && <NowIcon now={data.now} />}
-            <Icon d={I.chevDown} size={18} color="var(--muted)" />
-          </label>
+          </div>
+          <button className="switch-btn mob-only" onClick={() => setPicking(true)} aria-haspopup="dialog">
+            <span className="mono xs">{ap}</span>Bytt flyplass<Icon d={I.chevDown} size={16} />
+          </button>
           <span className="desk-only muted small">Widerøe-landinger i Finnmark{updated ? ` · oppdatert ${updated}` : ''}</span>
         </div>
         <button className="icon-btn" onClick={() => fetchDay(ap)} disabled={loading} aria-label="Oppdater">
           <Icon d={I.refresh} size={20} /><span className="desk-only">{loading ? 'Henter…' : 'Oppdater'}</span>
         </button>
       </header>
+
+      {picking && <AirportSheet current={ap} onPick={(c) => { setAp(c); setPicking(false); setDay((d) => (d === 'stats' ? d : 'today')); }} onClose={() => setPicking(false)} />}
 
       <div className="layout">
         <nav className="sidebar" aria-label="Flyplasser">
@@ -363,14 +502,15 @@ export default function App() {
               <div className="main-head">
                 <h1 className="desk-only title">{data.airport.name}<NowIcon now={data.now} big /></h1>
                 <div className="tabs" role="tablist">
-                  {[['today', 'I dag'], ['tomorrow', 'I morgen']].map(([k, l]) => (
+                  {[['today', 'I dag'], ['tomorrow', 'I morgen'], ['stats', 'Statistikk']].map(([k, l]) => (
                     <button key={k} role="tab" aria-selected={day === k} className={day === k ? 'on' : ''} onClick={() => setDay(k)}>
-                      {l}{lists[k].length ? ` · ${lists[k].length}` : ''}
+                      {l}{lists[k]?.length ? ` · ${lists[k].length}` : ''}
                     </button>
                   ))}
                 </div>
               </div>
 
+              {day === 'stats' ? <Stats code={ap} name={data.airport.name} /> : <>
               <NowPanel data={data} />
 
               {shown.length ? (
@@ -386,11 +526,12 @@ export default function App() {
                   <p className="mono raw no-border">{data.taf}</p>
                 </section>
               )}
+              </>}
             </>
           )}
 
           <footer className="xs muted foot">
-            Estimat fra TAF og regelmodell · {data?.storage ? `historikk: ${data.historyCount} landinger` : 'database ikke koblet til'}. Ikke offisiell informasjon – sjekk widerøe.no.
+            Estimat fra TAF og regelmodell · {data?.storage ? `historikk: ${data.historyCount} registrerte ankomster${data.historyHere != null ? ` (${data.historyHere} her)` : ''}` : 'database ikke koblet til'}. Ikke offisiell informasjon – sjekk widerøe.no.
           </footer>
         </main>
       </div>
