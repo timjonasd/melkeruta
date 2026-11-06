@@ -30,7 +30,7 @@ function Flight({ f }) {
         <span className="from">fra {f.fromName}{f.via ? ` via ${f.viaName}` : ''}</span>
       </div>
       <div className="row2">
-        <span className={`badge ${v.cls}`}>{v.text}</span>
+        <span className={`badge ${v.cls}`}>{v.text}{f.status === 'E' && f.statusTime ? ` · ny tid ${f.statusTime}` : ''}</span>
         {pct != null && f.status !== 'A' && (
           <span className="pct" title="Sannsynlighet for innstilling">{pct}% risiko</span>
         )}

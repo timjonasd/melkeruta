@@ -38,7 +38,7 @@ export default async function handler(req, res) {
         from: f.from,
         fromName: airportName(f.from),
         via: f.via,
-        viaName: f.via ? airportName(f.via) : null,
+        viaName: f.via ? f.via.split(',').map((c) => airportName(c.trim())).join(', ') : null,
         day: day === today ? 'today' : 'tomorrow',
         time: osloHM(f.sched),
         sched: f.sched,
