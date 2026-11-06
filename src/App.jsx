@@ -74,8 +74,8 @@ function NowPanel({ data }) {
   const cells = [
     ['Vind', r0(c.spd), 'm/s', c.gust > c.spd + 2 ? `fra ${dir3(c.dir)}°, kast ${r0(c.gust)}` : `fra ${dir3(c.dir)}°`],
     [`Sidevind${c.rwy ? ` ${c.rwy}` : ''}`, r0(c.xw), 'm/s', `grense ${L.xw}`],
-    ['Skytak', c.ceil >= 99999 ? 'fritt' : c.ceil, c.ceil >= 99999 ? '' : 'ft', `min ${L.ceil}`],
-    ['Sikt', c.vis >= 10000 ? '10+' : c.vis >= 5000 ? r0(c.vis / 1000) : c.vis, c.vis >= 5000 ? 'km' : 'm', c.phrase || `min ${L.vis} m`],
+    ['Skytak', c.ceil >= 99999 ? 'fritt' : c.ceil, c.ceil >= 99999 ? '' : 'ft', `min ${c.minCeil ?? L.ceil}${c.apch === 'sirkling' ? ' (sirkling)' : ''}`],
+    ['Sikt', c.vis >= 10000 ? '10+' : c.vis >= 5000 ? r0(c.vis / 1000) : c.vis, c.vis >= 5000 ? 'km' : 'm', c.phrase || `min ${c.minVis ?? L.vis} m`],
   ];
   return (
     <section className="panel now">
@@ -253,8 +253,8 @@ function Detail({ f, data, onBack }) {
           <Bar label="Kast" value={`${w.gust.toFixed(1)} / ${L.gust} m/s`} ratio={(t ? Math.max(w.gust, t.gust) : w.gust) / L.gust} />
           <Bar label="Sidevind" value={`${w.xw.toFixed(1)} / ${L.xw} m/s`} ratio={(t ? Math.max(w.xw, t.xw) : w.xw) / L.xw} />
           {w.tail > 0 && <Bar label="Medvind" value={`${w.tail.toFixed(1)} / ${L.tail} m/s`} ratio={w.tail / L.tail} />}
-          <Bar label="Skytak" value={`${ceilTxt(w.ceil)} · min ${L.ceil}`} ratio={L.ceil / Math.max(50, t ? Math.min(w.ceil, t.ceil) : w.ceil)} />
-          <Bar label="Sikt" value={`${visTxt(w.vis)} · min ${L.vis} m`} ratio={L.vis / Math.max(50, t ? Math.min(w.vis, t.vis) : w.vis)} />
+          <Bar label="Skytak" value={`${ceilTxt(w.ceil)} · min ${w.minCeil ?? L.ceil}${w.apch === 'sirkling' ? ' (sirkling)' : ''}`} ratio={(w.minCeil ?? L.ceil) / Math.max(50, t ? Math.min(w.ceil, t.ceil) : w.ceil)} />
+          <Bar label="Sikt" value={`${visTxt(w.vis)} · min ${w.minVis ?? L.vis} m`} ratio={(w.minVis ?? L.vis) / Math.max(50, t ? Math.min(w.vis, t.vis) : w.vis)} />
         </section>
       )}
 

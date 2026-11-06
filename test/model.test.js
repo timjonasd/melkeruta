@@ -30,3 +30,15 @@ const c = calibrate(calm, hist, 'HVG');
 console.log('calibrated', c);
 assert.equal(c.n, 20);
 console.log('OK');
+
+// Minima per baneende fra AIP
+import { endMinima, AIRPORTS } from '../lib/airports.js';
+assert.equal(endMinima(byIata.HVG, '08').type, 'sirkling');
+assert.equal(endMinima(byIata.HVG, '26').ceil, 1225);
+assert.equal(endMinima(byIata.VDS, '07').type, 'rett inn');
+assert.equal(endMinima(byIata.ALF, '29').ceil, 1510);
+for (const a of AIRPORTS) console.log(a.iata, a.rwy.map((e) => { const m = endMinima(a, e); return `${e}: ${m.ceil} ft/${m.vis} m ${m.type}`; }).join(' | '));
+// Vind fra vest ved Vadsø skal velge bane 25
+import { condRisk } from '../lib/model.js';
+assert.equal(condRisk(byIata.VDS, { dir: 260, spd: 8, gust: 10, ceil: 2000, vis: 9999 }).wx.rwy, '25');
+console.log('OK minima');
