@@ -3,6 +3,7 @@ import { App as NativeApp } from '@capacitor/app';
 import { api } from './api.js';
 import { AIRPORTS } from '../lib/airports.js';
 import { WeatherIcon, LandingScene, sceneFacts, skyText } from './Weather.jsx';
+import { LogoMark } from './Logo.jsx';
 
 // ---------- hjelpere ----------
 const KEY = 'melkeruten.airport';
@@ -480,7 +481,7 @@ export default function App() {
     <div className="page">
       <header className="topbar">
         <div className="brand">
-          <button className="eyebrow accent brand-btn" onClick={refresh} title="Oppdater">Melkeruten</button>
+          <button className="brand-btn" onClick={refresh} title="Oppdater"><LogoMark size={30} /><span className="wordmark">Melkeruten</span></button>
           <div className="picker">
             <span className="picker-label">{name}</span>
             {data?.airport.iata === ap && <NowIcon now={data.now} />}

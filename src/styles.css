@@ -128,7 +128,7 @@ tr.done .time-sm { color: var(--muted); }
   .desk-only { display: initial; }
   div.desk-only { display: block; }
   .mob-only { display: none; }
-  .brand { flex-direction: row; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .brand { flex-direction: row; align-items: center; gap: 14px; flex-wrap: wrap; }
   .picker { display: none; }
   .switch-btn.mob-only { display: none; }
   .tabs { flex: 0 0 auto; display: flex; }
@@ -140,7 +140,8 @@ tr.done .time-sm { color: var(--muted); }
 }
 
 /* brand som oppdateringsknapp */
-.brand-btn { align-self: flex-start; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
+.brand-btn { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; border: 0; background: none; padding: 0; color: var(--text); cursor: pointer; text-align: left; }
+.wordmark { font-family: "Space Grotesk", sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
 .brand-btn:hover { text-decoration: underline; text-underline-offset: 3px; }
 .brand-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
 
