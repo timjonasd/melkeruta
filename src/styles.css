@@ -272,3 +272,7 @@ tr.row-link td:last-child svg { vertical-align: middle; margin-left: 8px; }
 .month-bar span { min-width: 0; }
 @media (max-width: 380px) { .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 12px; } }
 @media (prefers-reduced-motion: reduce) { .sheet-wrap, .sheet { animation: none; } }
+
+/* Sitat ved logoen */
+.logo-quote { font-style: italic; overflow-wrap: anywhere; }
+.logo-quote .desk-only { font-style: normal; }

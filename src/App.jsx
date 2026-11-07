@@ -4,6 +4,7 @@ import { api } from './api.js';
 import { AIRPORTS } from '../lib/airports.js';
 import { WeatherIcon, LandingScene, sceneFacts, skyText } from './Weather.jsx';
 import { LogoMark } from './Logo.jsx';
+import { pickQuote } from './quotes.js';
 
 // ---------- hjelpere ----------
 const KEY = 'melkeruten.airport';
@@ -493,6 +494,15 @@ export default function App() {
   const [day, setDay] = useState('today');
   const [openId, setOpenId] = useState(null);
   const [picking, setPicking] = useState(false);
+  const [quote, setQuote] = useState(null);
+
+  // Sitat ved logoen: velges én gang når siden lastes, ut fra snittet for alle flyplasser.
+  useEffect(() => {
+    fetch(api('/api/summary'))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (j?.avg != null) setQuote(pickQuote(j.avg)); })
+      .catch(() => {});
+  }, []);
 
   async function fetchDay(code) {
     setLoading(true); setErr(null);
@@ -563,7 +573,7 @@ export default function App() {
           <button className="switch-btn mob-only" onClick={openPicker} aria-haspopup="dialog">
             <span className="mono xs">{ap}</span>Bytt flyplass<Icon d={I.chevDown} size={16} />
           </button>
-          <span className="desk-only muted small">Widerøe-landinger i Finnmark{updated ? ` · oppdatert ${updated}` : ''}</span>
+          <span className="muted small logo-quote">{quote || 'Widerøe-landinger i Finnmark'}<span className="desk-only">{updated ? ` · oppdatert ${updated}` : ''}</span></span>
         </div>
         <button className="icon-btn" onClick={() => fetchDay(ap)} disabled={loading} aria-label="Oppdater">
           <Icon d={I.refresh} size={20} /><span className="desk-only">{loading ? 'Henter…' : 'Oppdater'}</span>
