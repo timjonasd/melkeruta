@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { App as NativeApp } from '@capacitor/app';
 import { api } from './api.js';
 import { AIRPORTS } from '../lib/airports.js';
@@ -186,6 +186,43 @@ const posMin = (m) => (m >= 0 ? LIMIT_AT + Math.min(m, 1) * (100 - LIMIT_AT) : M
 const posOf = (m, kind) => (kind === 'max' ? 100 - posMin(m) : posMin(m));
 const marginState = (m) => (m < 0 ? { cls: 'high', text: 'Utenfor' } : m < 0.15 ? { cls: 'mid', text: 'Nær grensen' } : { cls: 'low', text: 'Innenfor' });
 
+// Etiketter under skalaen: målt verdi under prikken, grenseverdien under grensestreken.
+// Holdes innenfor raden, og skyves fra hverandre hvis de ville overlappet.
+function MarginLabels({ val, lim }) {
+  const box = useRef(null), vRef = useRef(null), lRef = useRef(null);
+  const [x, setX] = useState(null);
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const place = () => {
+      const W = el.clientWidth, wv = vRef.current.offsetWidth, wl = lRef.current.offsetWidth, gap = 10;
+      const at = (p, w) => Math.min(Math.max((p / 100) * W - w / 2, 0), W - w);
+      let a = { p: val.pos, w: wv, k: 'v' }, b = { p: lim.pos, w: wl, k: 'l' };
+      if (a.p > b.p) [a, b] = [b, a];
+      let xa = at(a.p, a.w), xb = at(b.p, b.w);
+      if (xa + a.w + gap > xb) {
+        const total = a.w + gap + b.w;
+        const mid = (((a.p + b.p) / 2) / 100) * W;
+        xa = Math.min(Math.max(mid - total / 2, 0), W - total);
+        xb = xa + a.w + gap;
+      }
+      setX(a.k === 'v' ? { v: xa, l: xb } : { v: xb, l: xa });
+    };
+    place();
+    const ro = new ResizeObserver(place);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [val.pos, val.text, lim.pos, lim.text]);
+  // Før måling: CSS-plassering som holder teksten innenfor kantene
+  const style = (p, k) => (x ? { left: `${x[k]}px` } : { left: `${p}%`, transform: `translateX(-${p}%)` });
+  return (
+    <div className="m-foot xs" ref={box}>
+      <span ref={vRef} className="m-lbl mono strong" style={style(val.pos, 'v')}>{val.text}</span>
+      <span ref={lRef} className="m-lbl muted mono" style={style(lim.pos, 'l')}>{lim.text}</span>
+    </div>
+  );
+}
+
 function MarginRow({ label, kind, val, tval, lim, unit, fmt, note }) {
   const m = marginOf(val, lim, kind);
   const mt = tval != null ? marginOf(tval, lim, kind) : null;
@@ -204,10 +241,10 @@ function MarginRow({ label, kind, val, tval, lim, unit, fmt, note }) {
         {mt != null && Math.abs(posOf(mt, kind) - posOf(m, kind)) > 1 && <span className={`m-dot hollow b-${marginState(mt).cls}`} style={{ left: `${posOf(mt, kind)}%` }} title="TEMPO" />}
         <span className={`m-dot bg-${marginState(m).cls}`} style={{ left: `${posOf(m, kind)}%` }} />
       </div>
-      <div className="m-foot xs">
-        <span className="mono strong">{val >= 99999 ? 'fritt' : fmt(val)}</span>
-        <span className="muted mono">{kind === 'max' ? 'maks' : 'min'} {fmt(lim)}{note ? ` ${note}` : ''}</span>
-      </div>
+      <MarginLabels
+        val={{ pos: posOf(m, kind), text: val >= 99999 ? 'fritt' : fmt(val) }}
+        lim={{ pos: limAt, text: `${kind === 'max' ? 'maks' : 'min'} ${fmt(lim)}${note ? ` ${note}` : ''}` }}
+      />
       {mt != null && mt < m && <span className="xs c-mid">TEMPO: {tval >= 99999 ? 'fritt' : fmt(tval)}</span>}
     </div>
   );
@@ -252,8 +289,8 @@ function WeatherPanel({ f, ap }) {
   const visLow = w.vis < (w.minVis ?? L.vis);
   const facts = [
     ['Vind', w.dir == null ? `VRB ${r0(w.spd)} m/s` : `${dir3(w.dir)}° ${r0(w.spd)} m/s`, w.gust > w.spd + 2 ? `kast ${r0(w.gust)} m/s` : 'jevn', w.gust / L.gust >= 0.9],
-    [w.rwy ? `Bane ${w.rwy}` : 'Bane', head == null ? '–' : head >= 0 ? `motvind ${r0(head)}` : `medvind ${r0(-head)}`,
-      side ? `sidevind ${w.xw.toFixed(0)} fra ${side}` : `sidevind ${w.xw.toFixed(0)}`, w.xw / L.xw >= 0.9 || w.tail / L.tail >= 0.9],
+    [w.rwy ? `Bane ${w.rwy}` : 'Bane', head == null ? '–' : head >= 0 ? `motvind ${r0(head)} m/s` : `medvind ${r0(-head)} m/s`,
+      side ? `sidevind ${r0(w.xw)} m/s fra ${side}` : `sidevind ${r0(w.xw)} m/s`, w.xw / L.xw >= 0.9 || w.tail / L.tail >= 0.9],
     ['Skytak', w.ceil >= 99999 ? 'fritt' : `${w.ceil} ft`, `min ${w.minCeil ?? L.ceil} ft`, ceilLow],
     ['Sikt', visTxt(w.vis), [skyText(sky), w.temp != null ? `${r0(w.temp)}°` : ''].filter(Boolean).join(' · ') || `min ${w.minVis ?? L.vis} m`, visLow],
   ];
@@ -548,7 +585,7 @@ export default function App() {
           )}
 
           <footer className="foot">
-            Estimat fra TAF og regelmodell · {data?.storage ? `historikk: ${data.historyCount} registrerte ankomster${data.historyHere != null ? ` (${data.historyHere} her)` : ''}` : 'database ikke koblet til'}. Ikke offisiell informasjon – sjekk widerøe.no. Melkeruten er ikke tilknyttet Widerøe eller Avinor.
+            Estimat fra TAF og regelmodell · {data?.storage ? `historikk: ${data.historyCount} registrerte ankomster${data.historyHere != null ? ` (${data.historyHere} her)` : ''}` : 'database ikke koblet til'}. Ikke offisiell informasjon. Melkeruten er ikke tilknyttet Widerøe eller Avinor.
           </footer>
         </main>
       </div>

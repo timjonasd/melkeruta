@@ -250,7 +250,8 @@ tr.row-link td:last-child svg { vertical-align: middle; margin-left: 8px; }
 .m-dot.hollow { background: var(--surface); border-width: 2px; border-style: solid; }
 .bg-low { background: var(--low); } .bg-mid { background: var(--mid); } .bg-high { background: var(--high); }
 .b-low { border-color: var(--low) !important; } .b-mid { border-color: var(--mid) !important; } .b-high { border-color: var(--high) !important; }
-.m-foot { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.m-foot { position: relative; height: 18px; margin-top: 2px; }
+.m-lbl { position: absolute; top: 0; white-space: nowrap; }
 
 /* statistikk */
 .stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 10px 0 8px; }
