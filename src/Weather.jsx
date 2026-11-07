@@ -84,7 +84,9 @@ export function WeatherIcon({ sky, size = 28 }) {
 }
 
 // ---------- Landingsillustrasjon ----------
-// Sett fra siden av banen: banen går mot høyre i landingsretning, vindpølsen viser vinden mot banen,
+// Sett fra siden av banen med fast geografi: lav baneende (rwy[0]) til venstre, høy til høyre.
+// Flyet kommer inn mot terskelen til banen i bruk, så det bytter side og retning når banen byttes.
+// Vindpølsen viser vinden mot banen,
 // skydekket er tegnet i riktig høyde mot en høydeskala, og nedbør/tåke legges oppå.
 const W = 372, H = 230;
 const GY = 196;        // banens senterlinje på skjermen (0 ft)
@@ -95,15 +97,15 @@ const DEPTH = 26;      // dybde (px) for v = ±1 på bakkeplanet
 const AXIS = 340;
 
 const yOf = (ft) => GY - (GY - TOP) * Math.sqrt(Math.min(Math.max(ft, 0), HMAX) / HMAX);
-// Bakkeplan -> skjerm. u: langs banen (+ = landingsretning), v: på tvers (+ = høyre for flyet = nærmest oss)
+// Bakkeplan -> skjerm. u: langs banen (+ = retningen til lav baneende, mot høyre), v: på tvers (+ = høyre for flyet = nærmest oss)
 const P = (u, v) => { const k = 1 + 0.16 * v; return [CX + u * HL * k, GY + v * DEPTH]; };
 
 // Deterministisk "tilfeldig" tall slik at illustrasjonen ikke hopper ved hver rendering
 const rnd = (i) => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 
-function Windsock({ rel, e, amp, period, vrb }) {
-  // Pæl på nær side av banen, ved terskelen
-  const [bx, by] = P(-0.72, 0.85);
+function Windsock({ rel, e, amp, period, vrb, end = -1 }) {
+  // Pæl på nær side av banen, ved terskelen til banen i bruk
+  const [bx, by] = P(0.72 * end, 0.85);
   const tx = bx, ty = by - 34;
   // Retning med vinden (medvinds), projisert. Henger rett ned når det er stille.
   const du = Math.cos(rel), dv = Math.sin(rel);
@@ -195,11 +197,11 @@ export function LandingScene({ ap, w, sky }) {
   const night = !!sky?.night;
   const useHigh = w.rwy && w.rwy === ap.rwy[1];
   const inUse = useHigh ? ap.rwy[1] : ap.rwy[0];
-  const other = useHigh ? ap.rwy[0] : ap.rwy[1];
-  const H0 = useHigh ? (ap.hdg + 180) % 360 : ap.hdg; // landingsretning (°T)
+  const end = useHigh ? 1 : -1; // terskelen til banen i bruk: venstre (lav ende) eller høyre (høy ende)
+  const H0 = ap.hdg; // skjermens +u-retning (°T) = retningen til lav baneende
   const vrb = w.dir == null;
   const spd = w.spd ?? 0, gust = w.gust ?? spd;
-  // Luftens bevegelse (mot) relativt til landingsretningen
+  // Luftens bevegelse (mot) relativt til skjermens +u-retning
   const rel = vrb ? Math.PI / 2 : (((w.dir + 180 - H0) % 360) * Math.PI) / 180;
   const e = vrb ? 0.15 : Math.min(1, spd / 7.7); // vindpølse er full ved ca. 15 kt
   const amp = vrb ? 35 : 2 + Math.min(10, Math.max(0, gust - spd) * 1.1) + (spd < 3 ? 4 : 0);
@@ -211,12 +213,16 @@ export function LandingScene({ ap, w, sky }) {
   const cover = w.ceil < 99999 ? Math.max(w.cover ?? 3, 3) : w.cover ?? (base ? 2 : 0);
   const minCeil = w.minCeil ?? ap.limits?.ceil;
   const low = w.ceil < 99999 && w.ceil < minCeil;
+  // Minimumslinjen: mørk tekst når den ligger over lys sky (overskyet), ellers gul mot mørk himmel
+  const onLight = !night && base != null && cover >= 3 && minCeil >= base - 150;
+  const minCol = onLight ? '#5A3B00' : 'var(--mid)';
   const haze = Math.max(hazeOf(w.vis ?? 10000), w.phen === 'fg' ? 0.55 : w.phen === 'br' ? 0.2 : 0);
 
   // Bane (trapes på bakkeplanet)
   const hw = 0.13;
   const corners = [P(-1, -hw), P(1, -hw), P(1, hw), P(-1, hw)];
-  const [thx, thy] = P(-1, 0), [ehx, ehy] = P(1, 0);
+  const [lx, ly] = P(-1, 0), [hx, hy] = P(1, 0);
+  const [thx, thy] = useHigh ? [hx, hy] : [lx, ly];
   // Vindstreker på bakken
   const streaks = vrb || spd < 1 ? [] : Array.from({ length: 9 }, (_, i) => {
     const u = -1.25 + rnd(i + 200) * 2.4, v = -0.95 + rnd(i + 300) * 1.9;
@@ -261,17 +267,17 @@ export function LandingScene({ ap, w, sky }) {
 
         {/* bane */}
         <path d={`M${corners.map((c) => c.join(' ')).join(' L')}Z`} fill="#33475A" stroke="#56708A" strokeWidth=".8" />
-        <line x1={thx + 12} y1={thy} x2={ehx - 12} y2={ehy} stroke="#EAF1F7" strokeWidth="1" strokeDasharray="7 7" opacity=".7" />
+        <line x1={lx + 12} y1={ly} x2={hx - 12} y2={hy} stroke="#EAF1F7" strokeWidth="1" strokeDasharray="7 7" opacity=".7" />
         {/* innflygingslys (blitz) før terskel */}
         {[0, 1, 2, 3].map((i) => {
-          const [x, y] = P(-1.08 - i * 0.07, 0);
+          const [x, y] = P(end * (1.08 + i * 0.07), 0);
           return <circle key={i} className="rabbit" style={{ animationDelay: `${(3 - i) * 0.12}s` }} cx={x} cy={y} r="1.6" fill="#FFF6D0" />;
         })}
-        <text x={thx + 4} y={thy + 22} className="rwy-num">{inUse}</text>
-        <text x={ehx - 4} y={ehy + 22} className="rwy-num" textAnchor="end" opacity=".55">{other}</text>
+        <text x={lx + 4} y={ly + 22} className="rwy-num" opacity={useHigh ? 0.55 : 1}>{ap.rwy[0]}</text>
+        <text x={hx - 4} y={hy + 22} className="rwy-num" textAnchor="end" opacity={useHigh ? 1 : 0.55}>{ap.rwy[1]}</text>
 
         {/* fly på innflyging */}
-        <g className="plane" style={{ '--tx': `${thx - 24}px`, '--ty': `${thy - 32}px` }}>
+        <g className="plane" style={{ '--tx': `${thx + 24 * end}px`, '--ty': `${thy - 32}px`, '--sx': -end }}>
           <path d="M-11 0 Q-11 -2.4 -7 -2.6 L7 -2.6 Q11 -2.4 12 0 Q11 1.6 7 1.6 L-7 1.6 Q-11 1.6 -11 0Z" fill="#EAF1F7" />
           <path d="M-9 -2.4 L-12 -8 L-9.5 -8 L-5.5 -2.4Z" fill="#EAF1F7" />
           <rect x="-3" y="-4" width="9" height="1.6" rx=".8" fill="#C9D6E2" />
@@ -281,13 +287,13 @@ export function LandingScene({ ap, w, sky }) {
         {streaks}
         <CloudLayer base={base} cover={cover} night={night} drift={drift} low={low} />
         <Precip phen={w.phen} base={base} slant={slant} />
-        <Windsock rel={rel} e={e} amp={amp} period={period} vrb={vrb} />
+        <Windsock rel={rel} e={e} amp={amp} period={period} vrb={vrb} end={end} />
         {haze > 0 && <rect className="haze" y={70} width={AXIS} height={H - 70} fill="url(#haze)" opacity={haze} />}
 
         {/* minimum skytak */}
         {minCeil && <g>
-          <line x1="0" x2={AXIS} y1={yOf(minCeil)} y2={yOf(minCeil)} stroke="var(--mid)" strokeWidth="1.2" strokeDasharray="5 4" />
-          <text x="8" y={yOf(minCeil) - 5} className="scene-lbl" fill="var(--mid)">min {minCeil} ft{w.apch === 'sirkling' ? ' (sirkling)' : ''}</text>
+          <line x1="0" x2={AXIS} y1={yOf(minCeil)} y2={yOf(minCeil)} stroke={minCol} strokeWidth="1.2" strokeDasharray="5 4" />
+          <text x="8" y={yOf(minCeil) - 5} className="scene-lbl" fill={minCol}>min {minCeil} ft{w.apch === 'sirkling' ? ' (sirkling)' : ''}</text>
         </g>}
       </g>
 

@@ -181,7 +181,9 @@ function FlightTable({ flights, onOpen }) {
 // Margin: 1 = langt innenfor, 0 = på grensen, <0 = utenfor. Samme retning for alle parametere.
 const marginOf = (val, lim, kind) => (kind === 'max' ? (lim - val) / lim : val >= 99999 ? 1 : (val - lim) / Math.max(val, 1));
 const LIMIT_AT = 22; // grensemarkørens plass på skalaen (%)
-const posOf = (m) => (m >= 0 ? LIMIT_AT + Math.min(m, 1) * (100 - LIMIT_AT) : Math.max(0, LIMIT_AT + Math.max(m, -1) * LIMIT_AT));
+const posMin = (m) => (m >= 0 ? LIMIT_AT + Math.min(m, 1) * (100 - LIMIT_AT) : Math.max(0, LIMIT_AT + Math.max(m, -1) * LIMIT_AT));
+// Maks-grenser (vind) speiles: lav verdi til venstre, grensen til høyre.
+const posOf = (m, kind) => (kind === 'max' ? 100 - posMin(m) : posMin(m));
 const marginState = (m) => (m < 0 ? { cls: 'high', text: 'Utenfor' } : m < 0.15 ? { cls: 'mid', text: 'Nær grensen' } : { cls: 'low', text: 'Innenfor' });
 
 function MarginRow({ label, kind, val, tval, lim, unit, fmt, note }) {
@@ -189,10 +191,7 @@ function MarginRow({ label, kind, val, tval, lim, unit, fmt, note }) {
   const mt = tval != null ? marginOf(tval, lim, kind) : null;
   const worst = mt != null ? Math.min(m, mt) : m;
   const st = marginState(worst);
-  const diff = kind === 'max' ? lim - val : val - lim;
-  const rel = val >= 99999 ? 'ingen skytak' : diff >= 0
-    ? `${fmt(diff)} ${kind === 'max' ? 'under' : 'over'} ${kind === 'max' ? 'grensen' : 'minimum'}`
-    : `${fmt(-diff)} ${kind === 'max' ? 'over grensen' : 'under minimum'}`;
+  const limAt = kind === 'max' ? 100 - LIMIT_AT : LIMIT_AT;
   return (
     <div className="m-row">
       <div className="m-head">
@@ -200,13 +199,13 @@ function MarginRow({ label, kind, val, tval, lim, unit, fmt, note }) {
         <span className={`m-chip c-${st.cls}`}>{st.text}</span>
       </div>
       <div className="m-track" aria-hidden="true">
-        <span className="m-out" style={{ width: `${LIMIT_AT}%` }} />
-        <span className="m-limit" style={{ left: `${LIMIT_AT}%` }} />
-        {mt != null && Math.abs(posOf(mt) - posOf(m)) > 1 && <span className={`m-dot hollow b-${marginState(mt).cls}`} style={{ left: `${posOf(mt)}%` }} title="TEMPO" />}
-        <span className={`m-dot bg-${marginState(m).cls}`} style={{ left: `${posOf(m)}%` }} />
+        <span className={`m-out${kind === 'max' ? ' right' : ''}`} style={{ width: `${LIMIT_AT}%` }} />
+        <span className="m-limit" style={{ left: `${limAt}%` }} />
+        {mt != null && Math.abs(posOf(mt, kind) - posOf(m, kind)) > 1 && <span className={`m-dot hollow b-${marginState(mt).cls}`} style={{ left: `${posOf(mt, kind)}%` }} title="TEMPO" />}
+        <span className={`m-dot bg-${marginState(m).cls}`} style={{ left: `${posOf(m, kind)}%` }} />
       </div>
       <div className="m-foot xs">
-        <span><span className="mono strong">{val >= 99999 ? 'fritt' : `${fmt(val)}`}</span> <span className="muted">{rel}</span></span>
+        <span className="mono strong">{val >= 99999 ? 'fritt' : fmt(val)}</span>
         <span className="muted mono">{kind === 'max' ? 'maks' : 'min'} {fmt(lim)}{note ? ` ${note}` : ''}</span>
       </div>
       {mt != null && mt < m && <span className="xs c-mid">TEMPO: {tval >= 99999 ? 'fritt' : fmt(tval)}</span>}
@@ -235,9 +234,6 @@ function Margins({ f, ap }) {
       <div className="panel-head">
         <span className="eyebrow">Mot grensene</span>
         <span className={`small strong c-${st.cls}`}>{summary}</span>
-      </div>
-      <div className="m-legend xs muted" aria-hidden="true">
-        <span style={{ left: `${LIMIT_AT}%` }}>grense</span><span className="m-good">god margin →</span>
       </div>
       {rows.map((r) => <MarginRow key={r.label} {...r} />)}
       {t && <span className="xs muted">Hul prikk = periodevis (TEMPO).</span>}
@@ -551,7 +547,7 @@ export default function App() {
             </>
           )}
 
-          <footer className="xs muted foot">
+          <footer className="foot">
             Estimat fra TAF og regelmodell · {data?.storage ? `historikk: ${data.historyCount} registrerte ankomster${data.historyHere != null ? ` (${data.historyHere} her)` : ''}` : 'database ikke koblet til'}. Ikke offisiell informasjon – sjekk widerøe.no. Melkeruten er ikke tilknyttet Widerøe eller Avinor.
           </footer>
         </main>
