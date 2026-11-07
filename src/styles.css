@@ -65,6 +65,12 @@ button { font: inherit; color: inherit; }
 .now-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .now-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .now-cell .xs { font-size: 11px; }
+.now-cell { gap: 4px; }
+.c-text { color: var(--text); }
+.now-sum { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; text-align: right; }
+.now-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.now-meter { display: block; height: 4px; border-radius: 2px; background: var(--track); overflow: hidden; margin: 2px 0; max-width: 140px; }
+.now-meter span { display: block; height: 100%; border-radius: 2px; }
 .big { font-size: 18px; font-weight: 500; }
 .unit { font-size: 12px; color: var(--muted); }
 .raw { margin: 0; font-size: 11px; line-height: 1.6; color: var(--muted); border-top: 1px solid var(--track); padding-top: 10px; word-break: break-word; }

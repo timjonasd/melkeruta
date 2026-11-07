@@ -83,32 +83,45 @@ function Ring({ p }) {
   );
 }
 
+// Hvor mye av marginen som er brukt: 0 = langt unna, 1 = på grensen.
+const usageOf = (val, lim, kind) => (kind === 'max' ? val / lim : val >= 99999 ? 0 : lim / Math.max(val, 1));
+
 function NowPanel({ data }) {
   const c = data.current;
   const L = data.airport.limits;
   if (!c) return <section className="panel now"><p className="muted">Ingen METAR tilgjengelig. Bruker værprognose.</p></section>;
+  const minCeil = c.minCeil ?? L.ceil, minVis = c.minVis ?? L.vis;
   const cells = [
-    ['Vind', r0(c.spd), 'm/s', c.gust > c.spd + 2 ? `fra ${dir3(c.dir)}°, kast ${r0(c.gust)}` : `fra ${dir3(c.dir)}°`],
-    [`Sidevind${c.rwy ? ` ${c.rwy}` : ''}`, r0(c.xw), 'm/s', `grense ${L.xw}`],
-    ['Skytak', c.ceil >= 99999 ? 'fritt' : c.ceil, c.ceil >= 99999 ? '' : 'ft', `min ${c.minCeil ?? L.ceil}${c.apch === 'sirkling' ? ' (sirkling)' : ''}`],
-    ['Sikt', c.vis >= 10000 ? '10+' : c.vis >= 5000 ? r0(c.vis / 1000) : c.vis, c.vis >= 5000 ? 'km' : 'm', c.phrase || `min ${c.minVis ?? L.vis} m`],
-  ];
+    { label: `Vind${c.dir != null ? ` ${dir3(c.dir)}°` : ' VRB'}`, val: r0(c.spd), unit: 'm/s',
+      sub: c.gust > c.spd + 2 ? `kast ${r0(c.gust)}, maks ${L.gust}` : `maks kast ${L.gust}`, m: [Math.max(c.gust, c.spd), L.gust, 'max'] },
+    { label: 'Sidevind', val: r0(c.xw), unit: 'm/s', sub: `maks ${L.xw}`, m: [c.xw, L.xw, 'max'] },
+    { label: 'Skytak', val: c.ceil >= 99999 ? 'Fritt' : c.ceil, unit: c.ceil >= 99999 ? '' : 'ft',
+      sub: `min ${minCeil}${c.apch === 'sirkling' ? ' sirkling' : ''}`, m: [c.ceil, minCeil, 'min'] },
+    { label: 'Sikt', val: c.vis >= 10000 ? '10+' : c.vis >= 5000 ? r0(c.vis / 1000) : c.vis, unit: c.vis >= 5000 ? 'km' : 'm',
+      sub: `min ${minVis} m`, m: [c.vis, minVis, 'min'] },
+  ].map((x) => ({ ...x, st: marginState(marginOf(...x.m)), use: Math.min(Math.max(usageOf(...x.m), 0.04), 1) }));
+  const bad = cells.filter((x) => x.st.cls === 'high'), near = cells.filter((x) => x.st.cls === 'mid');
+  const name = (x) => x.label.split(' ')[0].toLowerCase();
+  const sum = bad.length ? { cls: 'high', text: `Utenfor: ${bad.map(name).join(', ')}` }
+    : near.length ? { cls: 'mid', text: `Nær grensen: ${near.map(name).join(', ')}` }
+    : { cls: 'low', text: 'Innenfor grensene' };
   return (
     <section className="panel now">
       <div className="panel-head">
-        <span className="eyebrow">Nå · METAR {c.time}</span>
-        {c.rwy && <span className="muted small">Bane {c.rwy} i bruk</span>}
+        <span className="eyebrow">Nå · {c.time}{c.rwy ? ` · bane ${c.rwy}` : ''}</span>
+        <span className={`now-sum c-${sum.cls}`}><span className={`now-dot bg-${sum.cls}`} />{sum.text}</span>
       </div>
       <div className="now-grid">
-        {cells.map(([label, val, unit, sub]) => (
-          <div key={label} className="now-cell">
-            <span className="muted xs">{label}</span>
-            <span className="mono big">{val}{unit && <span className="unit"> {unit}</span>}</span>
-            <span className="muted xs">{sub}</span>
+        {cells.map((x) => (
+          <div key={x.label} className="now-cell">
+            <span className="muted xs">{x.label}</span>
+            <span className={`mono big c-${x.st.cls === 'low' ? 'text' : x.st.cls}`}>{x.val}{x.unit && <span className="unit"> {x.unit}</span>}</span>
+            <span className="now-meter" aria-hidden="true"><span className={`bg-${x.st.cls}`} style={{ width: `${x.use * 100}%` }} /></span>
+            <span className="muted xs">{x.sub}</span>
           </div>
         ))}
       </div>
-      {data.metar && <p className="mono raw">{data.metar}</p>}
+      {c.phrase && <span className="xs soft">{c.phrase}</span>}
     </section>
   );
 }
@@ -483,23 +496,41 @@ export default function App() {
   }
   useEffect(() => { save(ap); setOpenId(null); fetchDay(ap); }, [ap]);
 
-  // Android tilbakeknapp: lukk flyplassvelger/detaljvisning før appen avsluttes.
+  // Detaljvisning og flyplassvelger legges i nettleserhistorikken, slik at
+  // tilbaketasten (mobil, nettleser og Android-appen) går ett steg tilbake i stedet for å lukke siden.
+  const depth = () => (typeof history !== 'undefined' && history.state?.mr ? history.state.depth || 1 : 0);
+  const pushView = (st) => history.pushState({ ...st, depth: depth() + 1 }, '');
+  const openFlight = (id) => { pushView({ mr: 'detail', id }); setOpenId(id); };
+  const openPicker = () => { pushView({ mr: 'picker', under: openId }); setPicking(true); };
+  const goBack = () => (depth() ? history.back() : (setPicking(false), setOpenId(null)));
+  const closeAll = () => { const d = depth(); setPicking(false); setOpenId(null); if (d) history.go(-d); };
+  useEffect(() => {
+    if (history.state?.mr) history.replaceState(null, ''); // gammel tilstand etter omlasting
+    const onPop = () => {
+      const st = history.state;
+      setPicking(st?.mr === 'picker');
+      setOpenId(st?.mr === 'detail' ? st.id : st?.mr === 'picker' ? st.under ?? null : null);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  // Android-appen: samme historikk, og avslutt først når vi er på forsiden.
   useEffect(() => {
     const h = NativeApp.addListener('backButton', () => {
-      if (picking) setPicking(false);
-      else if (openId) setOpenId(null);
+      if (depth()) history.back();
       else if (day !== 'today') setDay('today');
       else NativeApp.exitApp();
     });
     return () => { h.then((l) => l.remove()); };
-  }, [picking, openId, day]);
+  }, [day]);
 
   // Hent ferske data når appen kommer tilbake i forgrunnen.
   useEffect(() => {
     const h = NativeApp.addListener('resume', () => fetchDay(ap));
     return () => { h.then((l) => l.remove()); };
   }, [ap]);
-  const refresh = () => { setOpenId(null); fetchDay(ap); };
+  const refresh = () => { closeAll(); fetchDay(ap); };
 
   const lists = useMemo(() => {
     const fl = data?.flights || [];
@@ -519,7 +550,7 @@ export default function App() {
             <span className="picker-label">{name}</span>
             {data?.airport.iata === ap && <NowIcon now={data.now} />}
           </div>
-          <button className="switch-btn mob-only" onClick={() => setPicking(true)} aria-haspopup="dialog">
+          <button className="switch-btn mob-only" onClick={openPicker} aria-haspopup="dialog">
             <span className="mono xs">{ap}</span>Bytt flyplass<Icon d={I.chevDown} size={16} />
           </button>
           <span className="desk-only muted small">Widerøe-landinger i Finnmark{updated ? ` · oppdatert ${updated}` : ''}</span>
@@ -529,7 +560,7 @@ export default function App() {
         </button>
       </header>
 
-      {picking && <AirportSheet current={ap} onPick={(c) => { setAp(c); setPicking(false); setDay((d) => (d === 'stats' ? d : 'today')); }} onClose={() => setPicking(false)} />}
+      {picking && <AirportSheet current={ap} onPick={(c) => { closeAll(); setAp(c); setDay((d) => (d === 'stats' ? d : 'today')); }} onClose={goBack} />}
 
       <div className="layout">
         <nav className="sidebar" aria-label="Flyplasser">
@@ -537,7 +568,7 @@ export default function App() {
             <div key={g} className="side-group">
               <span className="eyebrow side-head">{g}</span>
               {list.map((a) => (
-                <button key={a.iata} className={`side-item${a.iata === ap ? ' active' : ''}`} onClick={() => setAp(a.iata)} aria-current={a.iata === ap ? 'page' : undefined}>
+                <button key={a.iata} className={`side-item${a.iata === ap ? ' active' : ''}`} onClick={() => { closeAll(); setAp(a.iata); }} aria-current={a.iata === ap ? 'page' : undefined}>
                   {a.name}<span className="mono xs">{a.iata}</span>
                 </button>
               ))}
@@ -549,7 +580,7 @@ export default function App() {
           {err && <p className="panel c-high">Kunne ikke hente data: {err}</p>}
           {!data && !err && <p className="muted pad">Henter landinger og vær…</p>}
 
-          {data && open && <Detail f={open} data={data} onBack={() => setOpenId(null)} />}
+          {data && open && <Detail f={open} data={data} onBack={goBack} />}
 
           {data && !open && (
             <>
@@ -569,15 +600,15 @@ export default function App() {
 
               {shown.length ? (
                 <>
-                  <ul className="cards mob-only">{shown.map((f) => <FlightCard key={f.id} f={f} onOpen={setOpenId} />)}</ul>
-                  <div className="desk-only"><FlightTable flights={shown} onOpen={setOpenId} /></div>
+                  <ul className="cards mob-only">{shown.map((f) => <FlightCard key={f.id} f={f} onOpen={openFlight} />)}</ul>
+                  <div className="desk-only"><FlightTable flights={shown} onOpen={openFlight} /></div>
                 </>
               ) : <p className="muted pad">Ingen Widerøe-ankomster {day === 'today' ? 'i dag' : 'i morgen'}.</p>}
 
-              {data.taf && (
+              {(data.metar || data.taf) && (
                 <section className="panel soft-bg stack-8">
-                  <span className="eyebrow">TAF</span>
-                  <p className="mono raw no-border">{data.taf}</p>
+                  {data.metar && <><span className="eyebrow">METAR</span><p className="mono raw no-border">{data.metar}</p></>}
+                  {data.taf && <><span className="eyebrow">TAF</span><p className="mono raw no-border">{data.taf}</p></>}
                 </section>
               )}
               </>}
