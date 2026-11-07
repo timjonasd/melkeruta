@@ -618,7 +618,7 @@ export default function App() {
                   <ul className="cards mob-only">{shown.map((f) => <FlightCard key={f.id} f={f} onOpen={openFlight} />)}</ul>
                   <div className="desk-only"><FlightTable flights={shown} onOpen={openFlight} /></div>
                 </>
-              ) : <div className="pad stack-2"><p className="muted">Ingen Widerøe-ankomster {day === 'today' ? 'i dag' : 'i morgen'}.</p><p className="flight-quote">{noFlightsQuote(day === 'today' ? 0 : 1)}</p></div>}
+              ) : <p className="pad flight-quote">{noFlightsQuote(day === 'today' ? 0 : 1)}</p>}
 
               {(data.metar || data.taf) && (
                 <section className="panel soft-bg stack-8">
