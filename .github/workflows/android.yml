@@ -51,6 +51,15 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug bundleRelease --no-daemon
 
+      - name: Sjekk signatur på AAB
+        run: |
+          AAB=$(ls android/app/build/outputs/bundle/release/*.aab)
+          if keytool -printcert -jarfile "$AAB" | grep -q "SHA256:"; then
+            keytool -printcert -jarfile "$AAB" | grep -E "Owner|SHA256"
+          else
+            echo "::warning::AAB-en er IKKE signert."
+          fi
+
       - uses: actions/upload-artifact@v5
         with:
           name: melkeruten-debug-apk
