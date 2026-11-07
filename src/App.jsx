@@ -4,7 +4,11 @@ import { api } from './api.js';
 import { AIRPORTS } from '../lib/airports.js';
 import { WeatherIcon, LandingScene, sceneFacts, skyText } from './Weather.jsx';
 import { LogoMark } from './Logo.jsx';
-import { flightQuote, noFlightsQuote } from './quotes.js';
+import { flightQuote, noFlightsQuote, quoteLines } from './quotes.js';
+
+const Quote = ({ text, className = '' }) => (
+  <span className={`flight-quote ${className}`}>{quoteLines(text).map((l, i) => <span key={i} className="quote-line">{l}</span>)}</span>
+);
 
 // ---------- hjelpere ----------
 const KEY = 'melkeruten.airport';
@@ -373,7 +377,7 @@ function Detail({ f, data, onBack }) {
             <div className="stack-2">
               <span className="eyebrow">Sjanse for landing</span>
               <span className={`strong c-${v.cls}`}>{v.word} sjanse</span>
-              <span className="flight-quote">{flightQuote(p, f.id)}</span>
+              <Quote text={flightQuote(p, f.id)} />
             </div>
             <span className="mono huge">{p}<span className="unit-l">%</span></span>
           </div>
@@ -618,7 +622,7 @@ export default function App() {
                   <ul className="cards mob-only">{shown.map((f) => <FlightCard key={f.id} f={f} onOpen={openFlight} />)}</ul>
                   <div className="desk-only"><FlightTable flights={shown} onOpen={openFlight} /></div>
                 </>
-              ) : <p className="pad flight-quote">{noFlightsQuote(day === 'today' ? 0 : 1)}</p>}
+              ) : <p className="pad"><Quote text={noFlightsQuote(day === 'today' ? 0 : 1)} /></p>}
 
               {(data.metar || data.taf) && (
                 <section className="panel soft-bg stack-8">
