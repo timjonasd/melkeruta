@@ -585,7 +585,7 @@ export default function App() {
           )}
 
           <footer className="foot">
-            Estimat fra TAF og regelmodell · {data?.storage ? `historikk: ${data.historyCount} registrerte ankomster${data.historyHere != null ? ` (${data.historyHere} her)` : ''}` : 'database ikke koblet til'}. Ikke offisiell informasjon. Melkeruten er ikke tilknyttet Widerøe eller Avinor.
+            Estimat fra TAF og regelmodell · {data?.storage ? `historikk: ${data.historyCount} registrerte ankomster${data.historyHere != null ? ` (${data.historyHere} her)` : ''}` : 'database ikke koblet til'}. Ikke offisiell informasjon. Melkeruten er ikke tilknyttet Widerøe eller Avinor. · <a href="/personvern/" style={{ color: 'inherit' }}>Personvern</a>
           </footer>
         </main>
       </div>
