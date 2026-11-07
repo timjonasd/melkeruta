@@ -9,7 +9,7 @@
 // ============================================================
 
 export const QUOTES = {
-  // Høy sannsynlighet for landing
+  // Høy landingssjanse
   high: [
     "rulleban e så kort, har ikke anna valg enn å lette.",
     "korr høyt kan et lite fly.",
@@ -28,7 +28,7 @@ export const QUOTES = {
     "ikke skrik fordi det e forsinkelsa, skrik når det e kansellert.",
   ],
 
-  // Lav sannsynlighet
+  // Lav landingssjanse
   low: [
     "not looking good bestie.",
     "søtt lite håp du har.",
@@ -49,10 +49,11 @@ export const QUOTES = {
   ],
 };
 
-// Vises alltid på lørdager, uansett sannsynlighet
-export const SATURDAY_QUOTE = "lite fly på lørdaga, e jo helligdag.";
+// Vises når flyplassen ikke har noen landinger den dagen
+export const NO_FLIGHTS_SATURDAY = "Lite fly på lørdaga, e tydeligvis en hellig dag..";
+export const NO_FLIGHTS = "ingen fly! e det helligdag??";
 
-// Nedre grense (snitt landingssannsynlighet i %) for hvert nivå
+// Nedre grense (landingssjanse i %) for hvert nivå
 export const TIERS = [
   { min: 75, key: "high" },
   { min: 40, key: "medium" },
@@ -60,9 +61,19 @@ export const TIERS = [
   { min: 0, key: "veryLow" },
 ];
 
-export function pickQuote(avgProbability) {
-  if (new Date().getDay() === 6) return SATURDAY_QUOTE;
-  const tier = TIERS.find((t) => avgProbability >= t.min) ?? TIERS[TIERS.length - 1];
+// Sitat for én flyvning. Samme flyvning får samme sitat ved oppdatering,
+// så lenge den holder seg i samme nivå.
+export function flightQuote(prob, flightId = "") {
+  const tier = TIERS.find((t) => prob >= t.min) ?? TIERS[TIERS.length - 1];
   const list = QUOTES[tier.key];
-  return list[Math.floor(Math.random() * list.length)];
+  let h = 0;
+  for (const c of String(flightId)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return list[h % list.length];
+}
+
+// Sitat når det ikke er noen landinger. daysAhead: 0 = i dag, 1 = i morgen.
+export function noFlightsQuote(daysAhead = 0) {
+  const d = new Date(Date.now() + daysAhead * 864e5);
+  const wd = new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: "Europe/Oslo" }).format(d);
+  return wd === "Sat" ? NO_FLIGHTS_SATURDAY : NO_FLIGHTS;
 }

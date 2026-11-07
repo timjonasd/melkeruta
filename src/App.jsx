@@ -4,7 +4,7 @@ import { api } from './api.js';
 import { AIRPORTS } from '../lib/airports.js';
 import { WeatherIcon, LandingScene, sceneFacts, skyText } from './Weather.jsx';
 import { LogoMark } from './Logo.jsx';
-import { pickQuote } from './quotes.js';
+import { flightQuote, noFlightsQuote } from './quotes.js';
 
 // ---------- hjelpere ----------
 const KEY = 'melkeruten.airport';
@@ -373,6 +373,7 @@ function Detail({ f, data, onBack }) {
             <div className="stack-2">
               <span className="eyebrow">Sjanse for landing</span>
               <span className={`strong c-${v.cls}`}>{v.word} sjanse</span>
+              <span className="flight-quote">{flightQuote(p, f.id)}</span>
             </div>
             <span className="mono huge">{p}<span className="unit-l">%</span></span>
           </div>
@@ -494,15 +495,7 @@ export default function App() {
   const [day, setDay] = useState('today');
   const [openId, setOpenId] = useState(null);
   const [picking, setPicking] = useState(false);
-  const [quote, setQuote] = useState(null);
 
-  // Sitat ved logoen: velges én gang når siden lastes, ut fra snittet for alle flyplasser.
-  useEffect(() => {
-    fetch(api('/api/summary'))
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => { if (j?.avg != null) setQuote(pickQuote(j.avg)); })
-      .catch(() => {});
-  }, []);
 
   async function fetchDay(code) {
     setLoading(true); setErr(null);
@@ -565,10 +558,7 @@ export default function App() {
     <div className="page">
       <header className="topbar">
         <div className="brand">
-          <div className="brand-row">
-            <button className="brand-btn" onClick={refresh} title="Oppdater"><LogoMark size={30} /><span className="wordmark">Melkeruten</span></button>
-            <span className="muted small logo-quote">{quote || 'Widerøe-landinger i Finnmark'}</span>
-          </div>
+          <button className="brand-btn" onClick={refresh} title="Oppdater"><LogoMark size={30} /><span className="wordmark">Melkeruten</span></button>
           <div className="picker">
             <span className="picker-label">{name}</span>
             {data?.airport.iata === ap && <NowIcon now={data.now} />}
@@ -576,11 +566,14 @@ export default function App() {
           <button className="switch-btn mob-only" onClick={openPicker} aria-haspopup="dialog">
             <span className="mono xs">{ap}</span>Bytt flyplass<Icon d={I.chevDown} size={16} />
           </button>
-          {updated && <span className="desk-only muted small">Oppdatert {updated}</span>}
+          <span className="desk-only muted small">Widerøe-landinger i Finnmark</span>
         </div>
-        <button className="icon-btn" onClick={() => fetchDay(ap)} disabled={loading} aria-label="Oppdater">
-          <Icon d={I.refresh} size={20} /><span className="desk-only">{loading ? 'Henter…' : 'Oppdater'}</span>
-        </button>
+        <div className="refresh">
+          {updated && <span className="muted xs updated">Oppdatert {updated}</span>}
+          <button className="icon-btn" onClick={() => fetchDay(ap)} disabled={loading} aria-label="Oppdater">
+            <Icon d={I.refresh} size={20} /><span className="desk-only">{loading ? 'Henter…' : 'Oppdater'}</span>
+          </button>
+        </div>
       </header>
 
       {picking && <AirportSheet current={ap} onPick={(c) => { closeAll(); setAp(c); setDay((d) => (d === 'stats' ? d : 'today')); }} onClose={goBack} />}
@@ -626,7 +619,7 @@ export default function App() {
                   <ul className="cards mob-only">{shown.map((f) => <FlightCard key={f.id} f={f} onOpen={openFlight} />)}</ul>
                   <div className="desk-only"><FlightTable flights={shown} onOpen={openFlight} /></div>
                 </>
-              ) : <p className="muted pad">Ingen Widerøe-ankomster {day === 'today' ? 'i dag' : 'i morgen'}.</p>}
+              ) : <div className="pad stack-2"><p className="muted">Ingen Widerøe-ankomster {day === 'today' ? 'i dag' : 'i morgen'}.</p><p className="flight-quote">{noFlightsQuote(day === 'today' ? 0 : 1)}</p></div>}
 
               {(data.metar || data.taf) && (
                 <section className="panel soft-bg stack-8">
