@@ -50,7 +50,7 @@ export const QUOTES = {
 };
 
 // Vises alltid på lørdager, uansett sannsynlighet
-export const SATURDAY_QUOTE = "ingen fly på lørdaga, e jo helligdag.";
+export const SATURDAY_QUOTE = "lite fly på lørdaga, e jo helligdag.";
 
 // Nedre grense (snitt landingssannsynlighet i %) for hvert nivå
 export const TIERS = [
