@@ -566,7 +566,6 @@ export default function App() {
           <button className="switch-btn mob-only" onClick={openPicker} aria-haspopup="dialog">
             <span className="mono xs">{ap}</span>Bytt flyplass<Icon d={I.chevDown} size={16} />
           </button>
-          <span className="desk-only muted small">Widerøe-landinger i Finnmark</span>
         </div>
         <div className="refresh">
           {updated && <span className="muted xs updated">Oppdatert {updated}</span>}
