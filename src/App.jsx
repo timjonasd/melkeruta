@@ -565,7 +565,10 @@ export default function App() {
     <div className="page">
       <header className="topbar">
         <div className="brand">
-          <button className="brand-btn" onClick={refresh} title="Oppdater"><LogoMark size={30} /><span className="wordmark">Melkeruten</span></button>
+          <div className="brand-row">
+            <button className="brand-btn" onClick={refresh} title="Oppdater"><LogoMark size={30} /><span className="wordmark">Melkeruten</span></button>
+            <span className="muted small logo-quote">{quote || 'Widerøe-landinger i Finnmark'}</span>
+          </div>
           <div className="picker">
             <span className="picker-label">{name}</span>
             {data?.airport.iata === ap && <NowIcon now={data.now} />}
@@ -573,7 +576,7 @@ export default function App() {
           <button className="switch-btn mob-only" onClick={openPicker} aria-haspopup="dialog">
             <span className="mono xs">{ap}</span>Bytt flyplass<Icon d={I.chevDown} size={16} />
           </button>
-          <span className="muted small logo-quote">{quote || 'Widerøe-landinger i Finnmark'}<span className="desk-only">{updated ? ` · oppdatert ${updated}` : ''}</span></span>
+          {updated && <span className="desk-only muted small">Oppdatert {updated}</span>}
         </div>
         <button className="icon-btn" onClick={() => fetchDay(ap)} disabled={loading} aria-label="Oppdater">
           <Icon d={I.refresh} size={20} /><span className="desk-only">{loading ? 'Henter…' : 'Oppdater'}</span>

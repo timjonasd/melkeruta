@@ -274,5 +274,6 @@ tr.row-link td:last-child svg { vertical-align: middle; margin-left: 8px; }
 @media (prefers-reduced-motion: reduce) { .sheet-wrap, .sheet { animation: none; } }
 
 /* Sitat ved logoen */
-.logo-quote { font-style: italic; overflow-wrap: anywhere; }
-.logo-quote .desk-only { font-style: normal; }
+.brand-row { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand-row .brand-btn { align-self: center; flex-shrink: 0; }
+.logo-quote { font-style: italic; line-height: 1.25; min-width: 0; overflow-wrap: anywhere; }
