@@ -1,4 +1,4 @@
-# Melkeruten – landingssjanse Finnmark
+# Melkeruten · Landingssjanse Finnmark
 
 Live: https://melkeruten.no
 
@@ -16,13 +16,13 @@ Viser Widerøe-ankomster i dag og i morgen for valgt flyplass i Finnmark, med es
 1. Push mappen til et GitHub-repo og importer det i Vercel (Framework: Vite).
 2. Vercel → Storage → Marketplace → **Upstash Redis** (gratisnivå) → koble til prosjektet. Variablene (f.eks. `melkeruta_REST_API_URL` / `melkeruta_REST_API_TOKEN`) settes automatisk, og koden finner dem uansett prefiks.
 3. Miljøvariabler:
-   - `MET_USER_AGENT` – MET krever identifiserende User-Agent, f.eks. `landingssjanse/1.0 din@epost.no`
-   - `CRON_SECRET` – valgfri tilfeldig streng (Vercel sender den automatisk til cron).
+   - `MET_USER_AGENT`: MET krever identifiserende User-Agent, f.eks. `landingssjanse/1.0 din@epost.no`
+   - `CRON_SECRET`: valgfri tilfeldig streng (Vercel sender den automatisk til cron).
 4. Deploy. Cron kjører 04:00 og 22:30 UTC (Hobby-plan tillater én kjøring per cron per dag).
 5. Sjekk innsamling: `/api/history`. Kjør cron manuelt: `curl -H "Authorization: Bearer $CRON_SECRET" https://<app>/api/cron`.
 
 ## Juster
-`lib/airports.js`: banebetegnelser, sann baneretning, grenser for sidevind/kast/medvind og minima per flyplass. **Verdiene er omtrentlige – verifiser mot AIP Norge.**
+`lib/airports.js`: banebetegnelser, sann baneretning, grenser for sidevind/kast/medvind og minima per flyplass. **Verdiene er omtrentlige. Verifiser mot AIP Norge.**
 
 ## Test
 `npm test` (modell/TAF-parser) · `node test/e2e.mjs` (API med mock-data) · lokalt: `vercel dev`.

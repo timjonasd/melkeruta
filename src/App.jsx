@@ -7,7 +7,7 @@ import { LogoMark } from './Logo.jsx';
 
 // ---------- hjelpere ----------
 const KEY = 'melkeruten.airport';
-const OLD_KEY = 'melkeruta.airport'; // før navnebytte – beholder brukerens valgte flyplass
+const OLD_KEY = 'melkeruta.airport'; // før navnebytte, beholder brukerens valgte flyplass
 const load = () => { try { return localStorage.getItem(KEY) || localStorage.getItem(OLD_KEY) || 'HVG'; } catch { return 'HVG'; } };
 const save = (v) => { try { localStorage.setItem(KEY, v); } catch {} };
 
@@ -86,7 +86,7 @@ function Ring({ p }) {
 function NowPanel({ data }) {
   const c = data.current;
   const L = data.airport.limits;
-  if (!c) return <section className="panel now"><p className="muted">Ingen METAR tilgjengelig – bruker værprognose.</p></section>;
+  if (!c) return <section className="panel now"><p className="muted">Ingen METAR tilgjengelig. Bruker værprognose.</p></section>;
   const cells = [
     ['Vind', r0(c.spd), 'm/s', c.gust > c.spd + 2 ? `fra ${dir3(c.dir)}°, kast ${r0(c.gust)}` : `fra ${dir3(c.dir)}°`],
     [`Sidevind${c.rwy ? ` ${c.rwy}` : ''}`, r0(c.xw), 'm/s', `grense ${L.xw}`],
@@ -166,7 +166,7 @@ function FlightTable({ flights, onOpen }) {
                       <span className="mini-bar"><span style={{ width: `${Math.max(p, 2)}%`, background: riskColor(p) }} /></span>
                       <span className="mono">{chanceLevel(p).word} · {p}%</span>
                     </span>
-                  ) : '–'}
+                  ) : ''}
                   <Icon d={I.chevRight} size={16} color="var(--muted)" />
                 </td>
               </tr>
@@ -289,7 +289,7 @@ function WeatherPanel({ f, ap }) {
   const visLow = w.vis < (w.minVis ?? L.vis);
   const facts = [
     ['Vind', w.dir == null ? `VRB ${r0(w.spd)} m/s` : `${dir3(w.dir)}° ${r0(w.spd)} m/s`, w.gust > w.spd + 2 ? `kast ${r0(w.gust)} m/s` : 'jevn', w.gust / L.gust >= 0.9],
-    [w.rwy ? `Bane ${w.rwy}` : 'Bane', head == null ? '–' : head >= 0 ? `motvind ${r0(head)} m/s` : `medvind ${r0(-head)} m/s`,
+    [w.rwy ? `Bane ${w.rwy}` : 'Bane', head == null ? 'ukjent' : head >= 0 ? `motvind ${r0(head)} m/s` : `medvind ${r0(-head)} m/s`,
       side ? `sidevind ${r0(w.xw)} m/s fra ${side}` : `sidevind ${r0(w.xw)} m/s`, w.xw / L.xw >= 0.9 || w.tail / L.tail >= 0.9],
     ['Skytak', w.ceil >= 99999 ? 'fritt' : `${w.ceil} ft`, `min ${w.minCeil ?? L.ceil} ft`, ceilLow],
     ['Sikt', visTxt(w.vis), [skyText(sky), w.temp != null ? `${r0(w.temp)}°` : ''].filter(Boolean).join(' · ') || `min ${w.minVis ?? L.vis} m`, visLow],
