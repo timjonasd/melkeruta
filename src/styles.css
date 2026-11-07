@@ -169,6 +169,12 @@ tr.done .time-sm { color: var(--muted); }
 .seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: 9px; background: var(--surface-2); }
 .seg button { min-height: 30px; padding: 0 10px; border: 0; border-radius: 7px; background: none; color: var(--soft); font-size: 12px; font-weight: 600; cursor: pointer; }
 .seg button.on { background: var(--text); color: var(--bg); }
+.seg-wrap { display: inline-flex; align-items: center; gap: 8px; }
+.info-btn { width: 26px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: none; color: var(--muted); font: italic 700 13px/1 Georgia, serif; cursor: pointer; }
+.info-btn:hover, .info-btn.on { color: var(--text); border-color: var(--muted); }
+.info-box { margin: 10px 0 2px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); font-size: 13px; line-height: 1.5; color: var(--soft); }
+.info-box p { margin: 0; } .info-box p + p { margin-top: 6px; }
+.info-box strong { color: var(--text); }
 @media (max-width: 480px) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 12px; } }
 
 /* animasjoner */

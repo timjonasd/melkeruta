@@ -293,6 +293,7 @@ function Margins({ f, ap }) {
 
 function WeatherPanel({ f, ap }) {
   const [tempo, setTempo] = useState(false);
+  const [info, setInfo] = useState(false);
   const t = f.worstWx;
   const w = tempo && t ? t : f.wx;
   const sky = tempo && t ? f.worstSky || f.sky : f.sky;
@@ -312,12 +313,21 @@ function WeatherPanel({ f, ap }) {
       <div className="panel-head">
         <span className="eyebrow">Vær ved landing · {f.src}</span>
         {t && (
-          <div className="seg" role="tablist" aria-label="Prognose">
-            <button role="tab" aria-selected={!tempo} className={!tempo ? 'on' : ''} onClick={() => setTempo(false)}>Normalt</button>
-            <button role="tab" aria-selected={tempo} className={tempo ? 'on' : ''} onClick={() => setTempo(true)}>TEMPO</button>
+          <div className="seg-wrap">
+            <button className={`info-btn${info ? ' on' : ''}`} aria-label="Hva betyr Normalt og TEMPO?" aria-expanded={info} aria-controls="tempo-info" onClick={() => setInfo(v => !v)}>i</button>
+            <div className="seg" role="tablist" aria-label="Prognose">
+              <button role="tab" aria-selected={!tempo} className={!tempo ? 'on' : ''} onClick={() => setTempo(false)}>Normalt</button>
+              <button role="tab" aria-selected={tempo} className={tempo ? 'on' : ''} onClick={() => setTempo(true)}>TEMPO</button>
+            </div>
           </div>
         )}
       </div>
+      {t && info && (
+        <div id="tempo-info" className="info-box">
+          <p><strong>Normalt</strong> viser været TAF-en forventer det meste av tiden rundt landing.</p>
+          <p><strong>TEMPO</strong> viser forhold som kan komme periodevis, typisk i byger. De varer under en time om gangen og til sammen mindre enn halvparten av perioden. Det er ofte her vind, skytak eller sikt kommer nær minimum.</p>
+        </div>
+      )}
       <LandingScene ap={ap} w={w} sky={sky} />
       <div className="facts">
         {facts.map(([label, val, sub, warn]) => (
